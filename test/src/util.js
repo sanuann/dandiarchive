@@ -1,3 +1,5 @@
+import { vBtn, vTextField } from "./vuetify-xpaths";
+
 export const CLIENT_URL = process.env.CLIENT_URL;
 
 export function uniqueId() {
@@ -42,3 +44,16 @@ export async function login(username, password) {
   // this button has the same text as the button in the app bar, but also contains a mdi-login icon
   await (await page.waitForXPath(vBtn(['Login', vIcon('mdi-login')]))).click();
 };
+
+/**
+ * Registers a new dandiset.
+ *
+ * @param {string} name
+ * @param {string} description
+ */
+export async function registerDandiset(name, description) {
+  await (await page.waitForXPath(vBtn('New Dandiset'))).click();
+  await (await page.waitForXPath(vTextField('Name*'))).type(name);
+  await (await page.waitForXPath(vTextarea('Description*'))).type(description);
+  await (await page.waitForXPath(vBtn('Register dataset'))).click();
+}
