@@ -1,4 +1,4 @@
-import { vBtn, vTextField } from "./vuetify-xpaths";
+import { vBtn, vTextField, vIcon, vTextarea } from "./vuetify-xpaths";
 
 export const CLIENT_URL = process.env.CLIENT_URL;
 
@@ -10,7 +10,7 @@ export function uniqueId() {
 /**
  * Register a new user with a random username.
  *
- * @returns {object} { username, email }
+ * @returns {object} { username, email, password }
  */
 export async function registerNewUser() {
   const username = `user${uniqueId()}`;
