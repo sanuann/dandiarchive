@@ -39,7 +39,9 @@
             <v-list-item-subtitle>
               Contact <b>{{ getDandisetContact(item) }}</b>
               ·
-              Created on <b>{{ formatDate(item.created) }}</b>
+              Created: <b>{{ formatDate(item.created) }}</b>
+              ·
+              Modified: <b>{{ formatLastUpdated(item.updated) }}</b>
               ·
               DANDI:<b>{{ item.meta.dandiset.identifier }}</b>
             </v-list-item-subtitle>
@@ -95,6 +97,16 @@ export default {
     getDandisetContact,
     formatDate(date) {
       return moment(date).format('LL');
+    },
+    formatLastUpdated(datetimeStr) {
+      const today = moment();
+      const newDatetime = moment(datetimeStr);
+
+      if (newDatetime.isSame(today, 'day')) {
+        return newDatetime.format('hh:mm A');
+      }
+
+      return this.formatDate(datetimeStr);
     },
   },
 };
