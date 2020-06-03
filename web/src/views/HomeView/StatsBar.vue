@@ -12,7 +12,19 @@
           sm="4"
           cols="6"
         >
+          <router-link
+            v-if="stat.to"
+            :to="stat.to"
+            style="text-decoration: none;"
+          >
+            <SingleStat
+              :name="stat.name"
+              :value="stat.value.toString()"
+              :description="stat.description"
+            />
+          </router-link>
           <SingleStat
+            v-else
             :name="stat.name"
             :value="stat.value.toString()"
             :description="stat.description"
@@ -40,7 +52,14 @@ export default {
   components: { SingleStat },
   computed: mapState({
     stats: (state) => [
-      { name: 'dandisets', value: state.stats.drafts, description: 'A DANDI dataset including files and dataset-level metadata' },
+      {
+        name: 'dandisets',
+        value: state.stats.drafts,
+        description: 'A DANDI dataset including files and dataset-level metadata',
+        to: {
+          name: 'publicDandisets',
+        },
+      },
       { name: 'users', value: state.stats.users },
       { name: 'species', value: state.stats.species },
       { name: 'subjects', value: state.stats.subjects },
