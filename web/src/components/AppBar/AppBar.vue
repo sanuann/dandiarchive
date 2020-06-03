@@ -36,6 +36,17 @@
       My Dandisets
     </v-btn>
     <v-btn
+      href="https://docs.google.com/document/d/1ehxd5a6Hurz7VqQDAszEpGASRTUP6muXYwJ5wgXhzU4/"
+      target="_blank"
+      rel="noopener"
+      text
+    >
+      Workflow
+      <v-icon class="ml-1">
+        mdi-help-circle-outline
+      </v-icon>
+    </v-btn>
+    <v-btn
       :href="dandiAboutUrl"
       target="_blank"
       rel="noopener"
