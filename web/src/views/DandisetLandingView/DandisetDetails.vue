@@ -212,13 +212,15 @@
             right
             :color="timelineVersionItemColor(version)"
           >
-            <v-btn
-              text
-              class="font-weight-medium"
-              @click="setVersion(version)"
-            >
-              {{ version.version }}
-            </v-btn>
+            <template v-slot:opposite>
+              <span class="text-caption text--secondary">
+                02/26/19
+              </span>
+            </template>
+
+            <span class="font-weight-medium">
+              1.2.1
+            </span>
           </v-timeline-item>
         </v-timeline>
       </v-row>
