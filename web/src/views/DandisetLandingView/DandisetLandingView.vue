@@ -4,7 +4,6 @@
       v-if="edit && Object.entries(meta).length"
       :schema="schema"
       :model="meta"
-      :create="create"
       @close="edit = false"
     />
     <template v-else>
@@ -78,7 +77,6 @@
 import { mapState } from 'vuex';
 
 import SCHEMA from '@/assets/schema/dandiset.json';
-import NEW_SCHEMA from '@/assets/schema/dandiset_new.json';
 import NWB_SCHEMA from '@/assets/schema/dandiset_metanwb.json';
 
 import DandisetSearchField from '@/components/DandisetSearchField.vue';
@@ -106,11 +104,6 @@ export default {
       required: false,
       default: null,
     },
-    create: {
-      type: Boolean,
-      required: false,
-      default: () => false,
-    },
   },
   data() {
     return {
@@ -120,10 +113,6 @@ export default {
   },
   computed: {
     schema() {
-      if (this.create) {
-        return NEW_SCHEMA;
-      }
-
       if (this.edit) {
         return SCHEMA;
       }
