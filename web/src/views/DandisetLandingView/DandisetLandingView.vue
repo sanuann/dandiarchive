@@ -75,9 +75,9 @@
 
 <script>
 import { mapState } from 'vuex';
+import $RefParser from '@apidevtools/json-schema-ref-parser';
 
 import SCHEMA from '@/assets/schema/dandiset.json';
-import NWB_SCHEMA from '@/assets/schema/dandiset_metanwb.json';
 
 import DandisetSearchField from '@/components/DandisetSearchField.vue';
 import { draftVersion } from '@/utils';
@@ -109,19 +109,10 @@ export default {
     return {
       edit: false,
       detailsPanel: true,
+      schema: SCHEMA,
     };
   },
   computed: {
-    schema() {
-      if (this.edit) {
-        return SCHEMA;
-      }
-
-      const properties = { ...SCHEMA.properties, ...NWB_SCHEMA.properties };
-      const required = [...SCHEMA.required, ...NWB_SCHEMA.required];
-
-      return { properties, required };
-    },
     currentDandiset() {
       if (toggles.DJANGO_API) {
         return this.publishDandiset;
@@ -183,6 +174,9 @@ export default {
         }
       }
     },
+  },
+  async created() {
+    this.schema = await $RefParser.dereference(SCHEMA);
   },
   methods: {
     navigateToVersion(version) {
