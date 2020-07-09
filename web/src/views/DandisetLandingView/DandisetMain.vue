@@ -2,7 +2,7 @@
   <div>
     <v-row class="mx-2 my-2">
       <h1 class="font-weight-regular">
-        {{ meta.name }}
+        {{ data.name }}
       </h1>
     </v-row>
     <v-card class="pb-2">
@@ -113,7 +113,7 @@
         </v-card-title>
       </v-row>
       <v-row class="mx-1 mb-4 px-4 font-weight-light">
-        {{ meta.description }}
+        {{ data.description }}
       </v-row>
 
       <template v-for="key in Object.keys(extraFields).sort()">
@@ -167,7 +167,7 @@ export default {
       type: Object,
       required: true,
     },
-    meta: {
+    data: {
       type: Object,
       required: true,
     },
@@ -219,14 +219,14 @@ export default {
       return { name: 'fileBrowser', params: { identifier, version } };
     },
     permalink() {
-      return `${dandiUrl}/dandiset/${this.meta.identifier}/${this.version}`;
+      return `${dandiUrl}/dandiset/${this.data.identifier}/${this.version}`;
     },
     extraFields() {
-      const { meta, mainFields } = this;
-      const extra = Object.keys(meta).filter(
+      const { data, mainFields } = this;
+      const extra = Object.keys(data).filter(
         (x) => !mainFields.includes(x) && x in this.schema.properties,
       );
-      return extra.reduce((obj, key) => ({ ...obj, [key]: meta[key] }), {});
+      return extra.reduce((obj, key) => ({ ...obj, [key]: data[key] }), {});
     },
     ...mapState('dandiset', {
       girderDandiset: (state) => state.girderDandiset,
