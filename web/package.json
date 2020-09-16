@@ -10,6 +10,7 @@
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^9.0.1",
     "@girder/components": "^2.2.5",
+    "@koumoul/vjsf": "^1.13.0",
     "@sentry/browser": "^5.20.1",
     "@sentry/integrations": "^5.20.1",
     "ajv": "^6.12.3",
