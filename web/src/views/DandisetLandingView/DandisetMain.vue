@@ -195,22 +195,19 @@ export default {
     loggedIn,
     user,
     editDisabledMessage() {
-      // TODO: Uncomment below once editor is updated to handle new schema
-      return 'Editor functionality coming soon...';
+      if (!this.loggedIn) {
+        return 'You must be logged in to edit.';
+      }
 
-      // if (!this.loggedIn) {
-      //   return 'You must be logged in to edit.';
-      // }
+      if (!this.girderDandiset) {
+        return null;
+      }
 
-      // if (!this.girderDandiset) {
-      //   return null;
-      // }
+      if (this.girderDandiset._accessLevel < 1) {
+        return 'You do not have permission to edit this dandiset.';
+      }
 
-      // if (this.girderDandiset._accessLevel < 1) {
-      //   return 'You do not have permission to edit this dandiset.';
-      // }
-
-      // return null;
+      return null;
     },
     publishDisabledMessage() {
       if (!this.user) { return 'You must be logged in to publish'; }
