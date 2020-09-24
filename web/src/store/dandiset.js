@@ -1,5 +1,6 @@
-import { girderRest, publishRest } from '@/rest';
-import { draftVersion, dandisetHasVersion } from '@/utils';
+import axios from 'axios';
+import { girderRest, publishRest, dandisetSchemaURL } from '@/rest';
+import { draftVersion, dandisetHasVersion, resolveSchemaReferences } from '@/utils';
 
 export default {
   namespaced: true,
@@ -9,6 +10,7 @@ export default {
     versions: null,
     loading: false, // No mutation, as we don't want this mutated by the user
     owners: null,
+    dandisetSchema: null,
   },
   getters: {
     version(state) {
@@ -28,6 +30,9 @@ export default {
     setOwners(state, owners) {
       state.owners = owners;
     },
+    setDandisetSchema(state, schema) {
+      state.dandisetSchema = schema;
+    },
   },
   actions: {
     async uninitializeDandisets({ state, commit }) {
@@ -42,6 +47,7 @@ export default {
 
       dispatch('fetchGirderDandiset', { identifier });
       dispatch('fetchOwners', identifier);
+      dispatch('fetchDandisetSchema');
 
       // Required below
       await dispatch('fetchDandisetVersions', { identifier });
@@ -82,6 +88,16 @@ export default {
       commit('setGirderDandiset', data);
 
       state.loading = false;
+    },
+    async fetchDandisetSchema({ commit }) {
+      const res = await axios.get(dandisetSchemaURL);
+
+      if (res.statusText !== 'OK') {
+        return;
+      }
+
+      const schema = await resolveSchemaReferences(res.data);
+      commit('setDandisetSchema', schema);
     },
     async fetchOwners({ state, commit }, identifier) {
       state.loading = true;

@@ -1,5 +1,8 @@
 <template>
-  <div v-page-title="metadata.name">
+  <div
+    v-if="schema"
+    v-page-title="metadata.name"
+  >
     <meta-editor
       v-if="edit && Object.entries(metadata).length"
       :schema="schema"
@@ -75,9 +78,6 @@
 
 <script>
 import { mapState } from 'vuex';
-import $RefParser from '@apidevtools/json-schema-ref-parser';
-
-import SCHEMA from '@/assets/schema/dandiset.json';
 
 import DandisetSearchField from '@/components/DandisetSearchField.vue';
 import { draftVersion, dandisetHasVersion } from '@/utils';
@@ -108,7 +108,6 @@ export default {
     return {
       edit: false,
       detailsPanel: true,
-      schema: SCHEMA,
     };
   },
   computed: {
@@ -135,6 +134,7 @@ export default {
       publishDandiset: (state) => state.publishDandiset,
       loading: (state) => state.loading,
       dandisetVersions: (state) => state.versions,
+      schema: (state) => state.dandisetSchema,
     }),
   },
   watch: {
@@ -159,14 +159,6 @@ export default {
         if (!this.publishDandiset) { this.navigateToDefaultDandiset(); }
       }
     },
-  },
-  async created() {
-    const schema = SCHEMA;
-
-    // TEMPORARY: Remove known circular reference
-    delete schema.definitions.PropertyValue.properties.valueReference;
-
-    this.schema = await $RefParser.dereference(schema, { dereference: { circular: false } });
   },
   methods: {
     navigateToDefaultDandiset() {

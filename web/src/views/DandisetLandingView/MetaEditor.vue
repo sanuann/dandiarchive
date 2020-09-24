@@ -62,17 +62,7 @@
           <v-jsf
             v-model="basicModel"
             :schema="basicSchema"
-          >
-            <template v-slot:description="{on, value, label, disabled, rules}">
-              <v-textarea
-                :value="value"
-                :label="label"
-                :disabled="disabled"
-                :rules="rules"
-                v-on="on"
-              />
-            </template>
-          </v-jsf>
+          />
         </v-form>
       </v-col>
       <v-col cols="6">

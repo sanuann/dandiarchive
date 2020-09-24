@@ -11,6 +11,9 @@ const publishApiRoot = process.env.VUE_APP_PUBLISH_API_ROOT.endsWith('/')
   ? process.env.VUE_APP_PUBLISH_API_ROOT
   : `${process.env.VUE_APP_PUBLISH_API_ROOT}/`;
 
+const schemaRelease = process.env.VUE_APP_DANDISET_SCHEMA_RELEASE || '1.0.0-rc1';
+const dandisetSchemaURL = `https://raw.githubusercontent.com/dandi/schema/master/releases/${schemaRelease}/dandiset.json`;
+
 function girderize(publishedDandiset) {
   const { // eslint-disable-next-line camelcase
     created, modified, dandi_id, version, metadata, name,
@@ -91,6 +94,7 @@ const loggedIn = () => !!girderRest.user;
 const user = () => girderRest.user;
 
 export {
+  dandisetSchemaURL,
   girderRest,
   publishRest,
   loggedIn,
