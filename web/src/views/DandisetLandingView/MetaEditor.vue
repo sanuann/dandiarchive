@@ -18,7 +18,7 @@
         </v-btn>
       </v-snackbar>
 
-      <v-col sm="6">
+      <v-col>
         <v-card class="mb-2">
           <v-card-title>{{ data.name }}</v-card-title>
           <v-card-actions class="pt-0">
@@ -54,15 +54,50 @@
             </v-tooltip>
           </v-card-actions>
         </v-card>
-        <v-form
-          ref="form"
-          v-model="valid"
-        >
+      </v-col>
+    </v-row>
+    <v-row class="px-2">
+      <v-col cols="6">
+        <v-form ref="basic-form">
           <v-jsf
-            v-model="model"
-            :schema="tempFixSchema(schema)"
-          />
+            v-model="basicModel"
+            :schema="basicSchema"
+          >
+            <template v-slot:description="{on, value, label, disabled, rules}">
+              <v-textarea
+                :value="value"
+                :label="label"
+                :disabled="disabled"
+                :rules="rules"
+                v-on="on"
+              />
+            </template>
+          </v-jsf>
         </v-form>
+      </v-col>
+      <v-col cols="6">
+        <v-dialog
+          v-for="propKey in complexFields"
+          :key="propKey"
+        >
+          <template v-slot:activator="{ on }">
+            <v-btn
+              outlined
+              class="mx-2 my-2"
+              v-on="on"
+            >
+              {{ schema.properties[propKey].title || propKey }}
+            </v-btn>
+          </template>
+          <v-card class="pa-2 px-4">
+            <v-form :ref="`${propKey}-form`">
+              <v-jsf
+                v-model="complexModel[propKey]"
+                :schema="schema.properties[propKey]"
+              />
+            </v-form>
+          </v-card>
+        </v-dialog>
       </v-col>
     </v-row>
   </v-container>
@@ -72,6 +107,7 @@
 import { mapState, mapMutations } from 'vuex';
 import jsYaml from 'js-yaml';
 import Ajv from 'ajv';
+import { cloneDeep, pickBy } from 'lodash';
 
 import { girderRest } from '@/rest';
 
@@ -80,6 +116,8 @@ import '@koumoul/vjsf/lib/deps/third-party';
 import '@koumoul/vjsf/lib/VJsf.css';
 
 const ajv = new Ajv({ allErrors: true });
+const basicTypes = ['number', 'integer', 'string', 'boolean', 'null'];
+const isBasicType = (type) => basicTypes.includes(type);
 
 export default {
   components: {
@@ -102,9 +140,29 @@ export default {
       errors: [],
       data: this.copyValue(this.model),
       invalidPermissionSnackbar: false,
+      basicModel: {},
+      complexModel: {},
     };
   },
   computed: {
+    basicSchema() {
+      const schema = cloneDeep(this.schema);
+      const newProperties = pickBy(schema.properties, (val) => (
+        isBasicType(val.type) || (val.items && isBasicType(val.items.type))
+      ));
+      const newRequired = schema.required.filter((key) => Object.keys(newProperties).includes(key));
+
+      schema.properties = newProperties;
+      schema.required = newRequired;
+      delete schema.description;
+
+      return schema;
+    },
+    complexFields() {
+      const basicFields = Object.keys(this.basicSchema.properties);
+      const keys = Object.keys(this.schema.properties);
+      return keys.filter((key) => !basicFields.includes(key));
+    },
     validate() {
       return ajv.compile(this.schema);
     },
@@ -130,14 +188,55 @@ export default {
   created() {
     this.validate(this.data);
     this.errors = this.validate.errors;
+
+    this.setModels();
+
+    // TODO: Need to initialize all fields that are empty
   },
   methods: {
-    tempFixSchema(schema) {
-      const correctSchema = schema.properties.contributor.items.anyOf[0];
-      schema.properties.contributor.items = correctSchema;
+    setModels() {
+      const basicFields = Object.keys(this.basicSchema.properties);
+      const basicModel = cloneDeep(this.model);
+      const complexModel = cloneDeep(this.model);
 
-      return schema;
+      Object.keys(this.model).forEach((key) => {
+        if (!basicFields.includes(key)) {
+          delete basicModel[key];
+        } else {
+          delete complexModel[key];
+        }
+      });
+
+      this.basicModel = basicModel;
+      this.complexModel = complexModel;
     },
+    // tempFixSchema() {
+    //   // const correctSchema = schema.properties.contributor.items.anyOf[0];
+    //   // schema.properties.contributor.items = correctSchema;
+    //   const newSchema = this.schema;
+    //   // newSchema.properties.contributor.items = { ...newSchema.properties.contributor.items, ...newSchema.properties.contributor.items.anyOf[0] };
+    //   newSchema.properties.contributor.items.anyOf.forEach((schema) => {
+    //     schema.properties.schemaKey = {
+    //       type: 'string',
+    //       const: schema.title,
+    //     };
+    //   });
+
+    //   // newSchema.properties.contributor.items.type = 'object';
+    //   // newSchema.properties.contributor.items.title = 'Select Schema';
+    //   // newSchema.properties.contributor.items.oneOf = newSchema.properties.contributor.items.anyOf;
+    //   // delete newSchema.properties.contributor.items.anyOf;
+    //   return newSchema;
+    // },
+    // tempFixModel() {
+    //   const newModel = this.model;
+
+    //   newModel.contributor.forEach((cont) => {
+    //     cont.schemaKey = 'Person';
+    //   });
+
+    //   return newModel.contributor;
+    // },
     closeEditor() {
       this.$emit('close');
     },
@@ -155,10 +254,6 @@ export default {
 
         throw error;
       }
-    },
-    publish() {
-      // Call this.save()
-      // Probably call publish endpoint on the backend
     },
     errorMessage(error) {
       const path = error.dataPath.substring(1);
