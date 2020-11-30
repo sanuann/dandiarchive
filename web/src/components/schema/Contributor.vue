@@ -19,11 +19,8 @@
 </template>
 
 <script>
-import Ajv from 'ajv';
-
+import { findMatchingSchema } from '@/utils/schema';
 import ObjectComponent from './Object.vue';
-
-const ajv = new Ajv();
 
 export default {
   name: 'Contributor',
@@ -56,12 +53,13 @@ export default {
   },
   methods: {
     performReplacements(data, schema) {
-      const resolvedSchemas = this.resolveSchemas(data, schema);
       const newData = [];
+      const resolvedSchemas = [];
 
-      data.forEach((contributor, i) => {
+      data.forEach((contributor) => {
         // Okay because we only deal at the root level
         const newContributor = { ...contributor };
+        const resolvedSchema = findMatchingSchema(contributor, schema);
 
         if (contributor.identifier) {
           // Replace identifier with identifierType as the key,
@@ -69,29 +67,21 @@ export default {
           if (typeof contributor.identifier === 'object' && contributor.identifier !== null) {
             const { identifier, identifierType } = contributor.identifier;
 
-            if (identifierType) {
-              newContributor[identifierType] = identifier;
+            if (propertyID && resolvedSchema) {
+              newContributor[propertyID] = value;
               delete newContributor.identifier;
 
-              resolvedSchemas[i].properties[identifierType] = { title: identifierType };
-              delete resolvedSchemas[i].identifier;
+              resolvedSchema.properties[propertyID] = { title: propertyID };
+              delete resolvedSchema.identifier;
             }
           }
         }
 
+        resolvedSchemas.push(resolvedSchema);
         newData.push(newContributor);
       });
 
       return [newData, resolvedSchemas];
-    },
-    resolveSchemas(data, schema) {
-      const schemas = schema.anyOf || schema.oneOf;
-      if (schemas) {
-        const res = data.map((element) => schemas.find((s) => ajv.compile(s)(element)));
-        return res;
-      }
-
-      return [schema];
     },
   },
 };
