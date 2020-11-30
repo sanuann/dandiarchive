@@ -20,18 +20,42 @@
 
       <v-col>
         <v-card class="mb-2">
-          <v-card-title>{{ data.name }}</v-card-title>
+          <v-card-title>
+            <v-tooltip top>
+              <template v-slot:activator="{ on }">
+                <v-icon
+                  left
+                  :color="allModelsValid ? 'success' : 'error'"
+                  v-on="on"
+                >
+                  <template v-if="allmodelsValid">
+                    mdi-checkbox-marked-circle
+                  </template>
+                  <template v-else>
+                    mdi-alert-circle
+                  </template>
+                </v-icon>
+              </template>
+              <template v-if="allModelsValid">
+                All metadata for this dandiset is valid.
+              </template>
+              <template v-else>
+                There are errors in the metadata for this Dandiset.
+              </template>
+            </v-tooltip>
+            {{ data.name }}
+          </v-card-title>
           <v-card-actions class="pt-0">
             <v-tooltip bottom>
               <template v-slot:activator="{ on }">
                 <v-btn
                   icon
-                  color="error"
+                  color="secondary"
                   v-on="on"
                   @click="closeEditor"
                 >
                   <v-icon>
-                    mdi-close-circle
+                    mdi-arrow-left
                   </v-icon>
                 </v-btn>
               </template>
@@ -68,30 +92,21 @@
           <v-btn
             outlined
             class="mx-2 my-2"
+            :color="sectionButtonColor(propKey)"
             v-on="on"
           >
             {{ schema.properties[propKey].title || propKey }}
-            <!-- <v-icon
-              v-if="i % 2 === 0"
-              right
-              color="success"
-            >
-              mdi-check
-            </v-icon>
-            <v-icon
-              v-else
-              right
-              color="error"
-            >
-              mdi-close
-            </v-icon> -->
           </v-btn>
         </template>
         <v-card class="pa-2 px-4">
-          <v-form :ref="`${propKey}-form`">
+          <v-form
+            :ref="`${propKey}-form`"
+            v-model="complexModelValidation[propKey]"
+          >
             <v-jsf
               v-model="complexModel[propKey]"
               :schema="schema.properties[propKey]"
+              :options="VJSFOptions"
             />
           </v-form>
         </v-card>
@@ -99,10 +114,14 @@
     </v-row>
     <v-divider class="my-5" />
     <v-row class="px-2">
-      <v-form ref="basic-form">
+      <v-form
+        ref="basic-form"
+        v-model="basicModelValid"
+      >
         <v-jsf
           v-model="basicModel"
           :schema="basicSchema"
+          :options="VJSFOptions"
         />
       </v-form>
     </v-row>
@@ -148,6 +167,15 @@ export default {
       invalidPermissionSnackbar: false,
       basicModel: {},
       complexModel: {},
+      basicModelValid: null,
+      complexModelValidation: {},
+      VJSFOptions: {
+        selectProps: {
+          clearable: true,
+          color: 'success',
+        },
+        initialValidation: 'all',
+      },
     };
   },
   computed: {
@@ -173,6 +201,11 @@ export default {
     },
     validate() {
       return ajv.compile(this.schema);
+    },
+    allModelsValid() {
+      return this.basicModelValid && Object.keys(this.complexModelValidation).every(
+        (key) => !!this.complexModelValidation[key],
+      );
     },
     contentType() {
       return this.yamlOutput ? 'text/yaml' : 'application/json';
@@ -240,6 +273,14 @@ export default {
     },
     combineModels() {
       return { ...cloneDeep(this.basicModel), ...cloneDeep(this.complexModel) };
+    },
+    sectionButtonColor(propKey) {
+      const valid = this.complexModelValidation[propKey];
+      if (valid !== undefined && !valid) {
+        return 'error';
+      }
+
+      return undefined;
     },
     async save() {
       const dandiset = this.combineModels();
