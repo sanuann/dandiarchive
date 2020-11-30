@@ -120,7 +120,7 @@
 
 <script>
 import { loggedIn } from '@/rest';
-import { dandiAboutUrl, dandiDocumentationUrl } from '@/utils';
+import { dandiAboutUrl, dandiDocumentationUrl } from '@/utils/constants';
 import UserMenu from '@/components/AppBar/UserMenu.vue';
 
 export default {

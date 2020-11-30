@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { girderRest, publishRest, dandisetSchemaURL } from '@/rest';
-import {
-  draftVersion, dandisetHasVersion, resolveSchemaReferences, adjustSchemaForEditor,
-} from '@/utils';
+import { draftVersion } from '@/utils/constants';
+import { dandisetHasVersion } from '@/utils/misc';
+import { resolveSchemaReferences, adjustSchemaForEditor } from '@/utils/schema';
 
 export default {
   namespaced: true,

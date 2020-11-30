@@ -157,7 +157,7 @@
 <script>
 import { mapState, mapGetters } from 'vuex';
 
-import { dandiUrl } from '@/utils';
+import { dandiUrl } from '@/utils/constants';
 import { girderRest, loggedIn, user } from '@/rest';
 
 import CopyText from '@/components/CopyText.vue';
