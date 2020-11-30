@@ -2,17 +2,15 @@
   <div>
     <v-expansion-panels>
       <template v-for="(contributor, i) in resolvedData">
-        <template v-if="resolvedSchemas[i]">
-          <v-expansion-panel :key="contributor.name">
-            <v-expansion-panel-header>{{ contributor.name }}</v-expansion-panel-header>
-            <v-expansion-panel-content>
-              <object-component
-                :data="contributor"
-                :schema="resolvedSchemas[i]"
-              />
-            </v-expansion-panel-content>
-          </v-expansion-panel>
-        </template>
+        <v-expansion-panel :key="contributor.name">
+          <v-expansion-panel-header>{{ contributor.name }}</v-expansion-panel-header>
+          <v-expansion-panel-content>
+            <object-component
+              :data="contributor"
+              :schema="resolvedSchemas[i]"
+            />
+          </v-expansion-panel-content>
+        </v-expansion-panel>
       </template>
     </v-expansion-panels>
   </div>
