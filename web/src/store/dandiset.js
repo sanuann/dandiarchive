@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { girderRest, publishRest, dandisetSchemaURL } from '@/rest';
-import { draftVersion, dandisetHasVersion, resolveSchemaReferences } from '@/utils';
+import {
+  draftVersion, dandisetHasVersion, resolveSchemaReferences, adjustSchemaForEditor,
+} from '@/utils';
 
 export default {
   namespaced: true,
@@ -97,7 +99,12 @@ export default {
       }
 
       const schema = await resolveSchemaReferences(res.data);
-      commit('setDandisetSchema', schema);
+
+      const test = adjustSchemaForEditor(schema);
+      console.log(test);
+
+      // commit('setDandisetSchema', schema);
+      commit('setDandisetSchema', test);
     },
     async fetchOwners({ state, commit }, identifier) {
       state.loading = true;
