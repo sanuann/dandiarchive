@@ -3,7 +3,7 @@
     v-if="schema"
     v-page-title="metadata.name"
   >
-    <meta-editor
+    <meditor
       v-if="edit && Object.entries(metadata).length"
       :schema="schema"
       :model="metadata"
@@ -83,14 +83,14 @@ import DandisetSearchField from '@/components/DandisetSearchField.vue';
 import { draftVersion } from '@/utils/constants';
 import { dandisetHasVersion } from '@/utils/misc';
 import toggles from '@/featureToggle';
-import MetaEditor from './MetaEditor.vue';
+import Meditor from './Meditor.vue';
 import DandisetMain from './DandisetMain.vue';
 import DandisetDetails from './DandisetDetails.vue';
 
 export default {
   name: 'DandisetLandingView',
   components: {
-    MetaEditor,
+    Meditor,
     DandisetMain,
     DandisetSearchField,
     DandisetDetails,
