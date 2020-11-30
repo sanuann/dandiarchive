@@ -88,8 +88,13 @@ export default {
       return [newData, resolvedSchemas];
     },
     resolveSchemas(data, schema) {
-      const res = data.map((element) => schema.anyOf.find((s) => ajv.compile(s)(element)));
-      return res;
+      const schemas = schema.anyOf || schema.oneOf;
+      if (schemas) {
+        const res = data.map((element) => schemas.find((s) => ajv.compile(s)(element)));
+        return res;
+      }
+
+      return [schema];
     },
   },
 };
