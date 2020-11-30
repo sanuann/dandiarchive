@@ -214,6 +214,8 @@ export default {
         }
       });
 
+      // TODO: Move schema resolution to here instead of store
+
       this.basicModel = basicModel;
       this.complexModel = complexModel;
     },
