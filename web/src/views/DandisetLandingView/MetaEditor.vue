@@ -56,39 +56,55 @@
         </v-card>
       </v-col>
     </v-row>
+    <v-row>
+      <v-subheader>Click a field below to edit it.</v-subheader>
+    </v-row>
     <v-row class="px-2">
-      <v-col cols="6">
-        <v-form ref="basic-form">
-          <v-jsf
-            v-model="basicModel"
-            :schema="basicSchema"
-          />
-        </v-form>
-      </v-col>
-      <v-col cols="6">
-        <v-dialog
-          v-for="propKey in complexFields"
-          :key="propKey"
-        >
-          <template v-slot:activator="{ on }">
-            <v-btn
-              outlined
-              class="mx-2 my-2"
-              v-on="on"
+      <v-dialog
+        v-for="propKey in complexFields"
+        :key="propKey"
+      >
+        <template v-slot:activator="{ on }">
+          <v-btn
+            outlined
+            class="mx-2 my-2"
+            v-on="on"
+          >
+            {{ schema.properties[propKey].title || propKey }}
+            <!-- <v-icon
+              v-if="i % 2 === 0"
+              right
+              color="success"
             >
-              {{ schema.properties[propKey].title || propKey }}
-            </v-btn>
-          </template>
-          <v-card class="pa-2 px-4">
-            <v-form :ref="`${propKey}-form`">
-              <v-jsf
-                v-model="complexModel[propKey]"
-                :schema="schema.properties[propKey]"
-              />
-            </v-form>
-          </v-card>
-        </v-dialog>
-      </v-col>
+              mdi-check
+            </v-icon>
+            <v-icon
+              v-else
+              right
+              color="error"
+            >
+              mdi-close
+            </v-icon> -->
+          </v-btn>
+        </template>
+        <v-card class="pa-2 px-4">
+          <v-form :ref="`${propKey}-form`">
+            <v-jsf
+              v-model="complexModel[propKey]"
+              :schema="schema.properties[propKey]"
+            />
+          </v-form>
+        </v-card>
+      </v-dialog>
+    </v-row>
+    <v-divider class="my-5" />
+    <v-row class="px-2">
+      <v-form ref="basic-form">
+        <v-jsf
+          v-model="basicModel"
+          :schema="basicSchema"
+        />
+      </v-form>
     </v-row>
   </v-container>
 </template>
@@ -138,7 +154,9 @@ export default {
     basicSchema() {
       const schema = cloneDeep(this.schema);
       const newProperties = pickBy(schema.properties, (val) => (
-        isBasicType(val.type) || (val.items && isBasicType(val.items.type))
+        isBasicType(val.type)
+        || (val.items && isBasicType(val.items.type))
+        || (val.items && val.items.enum)
       ));
       const newRequired = schema.required.filter((key) => Object.keys(newProperties).includes(key));
 
@@ -179,17 +197,16 @@ export default {
     this.validate(this.data);
     this.errors = this.validate.errors;
 
-    this.setModels();
-
-    // TODO: Need to initialize all fields that are empty
+    const fixedModel = this.ensurePopulatedArrays(this.schema, this.model);
+    this.setModels(fixedModel);
   },
   methods: {
-    setModels() {
+    setModels(model) {
       const basicFields = Object.keys(this.basicSchema.properties);
-      const basicModel = cloneDeep(this.model);
-      const complexModel = cloneDeep(this.model);
+      const basicModel = cloneDeep(model);
+      const complexModel = cloneDeep(model);
 
-      Object.keys(this.model).forEach((key) => {
+      Object.keys(model).forEach((key) => {
         if (!basicFields.includes(key)) {
           delete basicModel[key];
         } else {
@@ -200,39 +217,33 @@ export default {
       this.basicModel = basicModel;
       this.complexModel = complexModel;
     },
-    // tempFixSchema() {
-    //   // const correctSchema = schema.properties.contributor.items.anyOf[0];
-    //   // schema.properties.contributor.items = correctSchema;
-    //   const newSchema = this.schema;
-    //   // newSchema.properties.contributor.items = { ...newSchema.properties.contributor.items, ...newSchema.properties.contributor.items.anyOf[0] };
-    //   newSchema.properties.contributor.items.anyOf.forEach((schema) => {
-    //     schema.properties.schemaKey = {
-    //       type: 'string',
-    //       const: schema.title,
-    //     };
-    //   });
-
-    //   // newSchema.properties.contributor.items.type = 'object';
-    //   // newSchema.properties.contributor.items.title = 'Select Schema';
-    //   // newSchema.properties.contributor.items.oneOf = newSchema.properties.contributor.items.anyOf;
-    //   // delete newSchema.properties.contributor.items.anyOf;
-    //   return newSchema;
-    // },
-    // tempFixModel() {
-    //   const newModel = this.model;
-
-    //   newModel.contributor.forEach((cont) => {
-    //     cont.schemaKey = 'Person';
-    //   });
-
-    //   return newModel.contributor;
-    // },
     closeEditor() {
       this.$emit('close');
     },
+
+    /*
+      Returns a new model with all fields of type 'array' populated with an empty array
+     */
+    ensurePopulatedArrays(schema, model) {
+      const newModel = cloneDeep(model);
+      const arrayFields = Object.keys(schema.properties).filter((key) => schema.properties[key].type === 'array');
+
+      arrayFields.forEach((key) => {
+        if (newModel[key] === undefined) {
+          newModel[key] = [];
+        }
+      });
+
+      return newModel;
+    },
+    combineModels() {
+      return { ...cloneDeep(this.basicModel), ...cloneDeep(this.complexModel) };
+    },
     async save() {
+      const dandiset = this.combineModels();
+
       try {
-        const { status, data } = await girderRest.put(`folder/${this.id}/metadata`, { dandiset: this.data });
+        const { status, data } = await girderRest.put(`folder/${this.id}/metadata`, { dandiset });
         if (status === 200) {
           this.setGirderDandiset(data);
           this.closeEditor();
