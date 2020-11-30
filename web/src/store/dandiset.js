@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { girderRest, publishRest, dandisetSchemaURL } from '@/rest';
-import { draftVersion, dandisetHasVersion, resolveSchemaReferences } from '@/utils';
+import { draftVersion } from '@/utils/constants';
+import { dandisetHasVersion } from '@/utils/misc';
+import { resolveSchemaReferences, adjustSchemaForEditor } from '@/utils/schema';
 import toggles from '@/featureToggle';
 
 export default {

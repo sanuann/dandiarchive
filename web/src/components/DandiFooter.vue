@@ -1,5 +1,6 @@
 <script>
-import { copyToClipboard, dandiAboutUrl } from '@/utils';
+import { dandiAboutUrl } from '@/utils/constants';
+import { copyToClipboard } from '@/utils/misc';
 
 export default {
   name: 'DandiFooter',

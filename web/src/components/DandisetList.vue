@@ -76,7 +76,7 @@ import {
 import moment from 'moment';
 import filesize from 'filesize';
 
-import { getDandisetContact } from '@/utils';
+import { getDandisetContact } from '@/utils/misc';
 import toggles from '@/featureToggle';
 import { girderRest } from '@/rest';
 
