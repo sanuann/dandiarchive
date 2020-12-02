@@ -28,7 +28,7 @@
                   :color="allModelsValid ? 'success' : 'error'"
                   v-on="on"
                 >
-                  <template v-if="allmodelsValid">
+                  <template v-if="allModelsValid">
                     mdi-checkbox-marked-circle
                   </template>
                   <template v-else>
@@ -85,7 +85,7 @@
     </v-row>
     <v-row class="px-2">
       <v-dialog
-        v-for="propKey in complexFields"
+        v-for="propKey in Object.keys(complexSchema.properties)"
         :key="propKey"
       >
         <template v-slot:activator="{ on }">
@@ -95,7 +95,7 @@
             :color="sectionButtonColor(propKey)"
             v-on="on"
           >
-            {{ schema.properties[propKey].title || propKey }}
+            {{ complexSchema.properties[propKey].title || propKey }}
           </v-btn>
         </template>
         <v-card class="pa-2 px-4">
@@ -170,10 +170,6 @@ export default {
       basicModelValid: null,
       complexModelValidation: {},
       VJSFOptions: {
-        selectProps: {
-          clearable: true,
-          color: 'success',
-        },
         initialValidation: 'all',
       },
     };
@@ -194,10 +190,23 @@ export default {
 
       return schema;
     },
-    complexFields() {
-      const basicFields = Object.keys(this.basicSchema.properties);
-      const keys = Object.keys(this.schema.properties);
-      return keys.filter((key) => !basicFields.includes(key));
+    complexSchema() {
+      const schema = cloneDeep(this.schema);
+      const { basicSchema } = this;
+      
+      delete schema.description;
+      Object.keys(schema.properties).forEach((key) => {
+        if (basicSchema.properties[key]) {
+          delete schema.properties[key];
+
+          const requiredIndex = schema.required.findIndex((el) => el === key);
+          if (requiredIndex >= 0) {
+            schema.required.splice(requiredIndex, 1);
+          }
+        }
+      });
+
+      return schema;
     },
     validate() {
       return ajv.compile(this.schema);
@@ -260,11 +269,12 @@ export default {
       Returns a new model with all fields of type 'array' populated with an empty array
      */
     ensurePopulatedArrays(schema, model) {
+      // TODO: May need to include objects in this as well.
       const newModel = cloneDeep(model);
       const arrayFields = Object.keys(schema.properties).filter((key) => schema.properties[key].type === 'array');
-
+      
       arrayFields.forEach((key) => {
-        if (newModel[key] === undefined) {
+        if (newModel[key] === undefined || newModel[key] === null) {
           newModel[key] = [];
         }
       });
