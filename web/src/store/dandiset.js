@@ -100,11 +100,11 @@ export default {
 
       const schema = await resolveSchemaReferences(res.data);
 
-      const test = adjustSchemaForEditor(schema);
-      console.log(test);
+      // TODO: Once a proper translation layer is created,
+      // this should be movedto where it'simmediately used.
+      const adjustedSchema = adjustSchemaForEditor(schema);
 
-      // commit('setDandisetSchema', schema);
-      commit('setDandisetSchema', test);
+      commit('setDandisetSchema', adjustedSchema);
     },
     async fetchOwners({ state, commit }, identifier) {
       state.loading = true;
