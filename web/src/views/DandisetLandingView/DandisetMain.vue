@@ -117,14 +117,14 @@
       </v-row>
 
       <template v-for="key in Object.keys(extraFields).sort()">
-        <template v-if="extraFields[key] !== null">
+        <template v-if="renderData(extraFields[key], schema.properties[key])">
           <v-divider :key="`${key}-divider`" />
           <v-row
             :key="`${key}-title`"
             :class="titleClasses"
           >
             <v-card-title class="font-weight-regular">
-              {{ schema.properties[key].title }}
+              {{ schema.properties[key].title || key }}
             </v-card-title>
           </v-row>
           <v-row
@@ -255,6 +255,14 @@ export default {
   methods: {
     async publish() {
       await girderRest.post(`/dandi/${this.girderDandiset.meta.dandiset.identifier}`);
+    },
+    renderData(data, schema) {
+      if (data === null) { return false; }
+      if (schema.type === 'array' && Array.isArray(data) && data.length === 0) {
+        return false;
+      }
+
+      return true;
     },
   },
 };
