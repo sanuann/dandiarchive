@@ -84,33 +84,35 @@
       <v-subheader>Click a field below to edit it.</v-subheader>
     </v-row>
     <v-row class="px-2">
-      <v-dialog
-        v-for="propKey in Object.keys(complexSchema.properties)"
-        :key="propKey"
-      >
-        <template v-slot:activator="{ on }">
-          <v-btn
-            outlined
-            class="mx-2 my-2"
-            :color="sectionButtonColor(propKey)"
-            v-on="on"
-          >
-            {{ complexSchema.properties[propKey].title || propKey }}
-          </v-btn>
-        </template>
-        <v-card class="pa-2 px-4">
-          <v-form
-            :ref="`${propKey}-form`"
-            v-model="complexModelValidation[propKey]"
-          >
-            <v-jsf
-              v-model="complexModel[propKey]"
-              :schema="schema.properties[propKey]"
-              :options="VJSFOptions"
-            />
-          </v-form>
-        </v-card>
-      </v-dialog>
+      <template v-for="propKey in Object.keys(complexSchema.properties)">
+        <v-dialog
+          v-if="renderField(complexSchema.properties[propKey])"
+          :key="propKey"
+        >
+          <template v-slot:activator="{ on }">
+            <v-btn
+              outlined
+              class="mx-2 my-2"
+              :color="sectionButtonColor(propKey)"
+              v-on="on"
+            >
+              {{ complexSchema.properties[propKey].title || propKey }}
+            </v-btn>
+          </template>
+          <v-card class="pa-2 px-4">
+            <v-form
+              :ref="`${propKey}-form`"
+              v-model="complexModelValidation[propKey]"
+            >
+              <v-jsf
+                v-model="complexModel[propKey]"
+                :schema="schema.properties[propKey]"
+                :options="CommonVJSFOptions"
+              />
+            </v-form>
+          </v-card>
+        </v-dialog>
+      </template>
     </v-row>
     <v-divider class="my-5" />
     <v-row class="px-2">
@@ -121,7 +123,7 @@
         <v-jsf
           v-model="basicModel"
           :schema="basicSchema"
-          :options="VJSFOptions"
+          :options="{...CommonVJSFOptions, hideReadOnly: true}"
         />
       </v-form>
     </v-row>
@@ -169,7 +171,7 @@ export default {
       complexModel: {},
       basicModelValid: null,
       complexModelValidation: {},
-      VJSFOptions: {
+      CommonVJSFOptions: {
         initialValidation: 'all',
       },
     };
@@ -243,6 +245,16 @@ export default {
     this.setModels(fixedModel);
   },
   methods: {
+    renderField(schema) {
+      const props = schema.properties;
+
+      if (schema.readOnly) { return false; }
+      if (props && Object.keys(props).every((key) => props[key].readOnly)) {
+        return false;
+      }
+
+      return true;
+    },
     setModels(model) {
       const basicFields = Object.keys(this.basicSchema.properties);
       const basicModel = cloneDeep(model);
