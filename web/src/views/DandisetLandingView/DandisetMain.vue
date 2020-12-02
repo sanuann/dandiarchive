@@ -127,28 +127,30 @@
       </v-row>
 
       <template v-for="key in Object.keys(extraFields).sort()">
-        <v-divider :key="`${key}-divider`" />
-        <v-row
-          :key="`${key}-title`"
-          :class="titleClasses"
-        >
-          <v-card-title class="font-weight-regular">
-            {{ schema.properties[key].title }}
-          </v-card-title>
-        </v-row>
-        <v-row
-          :key="key"
-          class="mx-2 mb-4"
-        >
-          <v-col class="py-0">
-            <ListingComponent
-              :field="key"
-              :schema="schema.properties[key]"
-              :data="extraFields[key]"
-              root
-            />
-          </v-col>
-        </v-row>
+        <template v-if="extraFields[key] !== null">
+          <v-divider :key="`${key}-divider`" />
+          <v-row
+            :key="`${key}-title`"
+            :class="titleClasses"
+          >
+            <v-card-title class="font-weight-regular">
+              {{ schema.properties[key].title }}
+            </v-card-title>
+          </v-row>
+          <v-row
+            :key="key"
+            class="mx-2 mb-4"
+          >
+            <v-col class="py-0">
+              <ListingComponent
+                :field="key"
+                :schema="schema.properties[key]"
+                :data="extraFields[key]"
+                root
+              />
+            </v-col>
+          </v-row>
+        </template>
       </template>
     </v-card>
   </div>

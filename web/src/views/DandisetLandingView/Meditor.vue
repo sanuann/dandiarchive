@@ -193,7 +193,7 @@ export default {
     complexSchema() {
       const schema = cloneDeep(this.schema);
       const { basicSchema } = this;
-      
+
       delete schema.description;
       Object.keys(schema.properties).forEach((key) => {
         if (basicSchema.properties[key]) {
@@ -272,7 +272,7 @@ export default {
       // TODO: May need to include objects in this as well.
       const newModel = cloneDeep(model);
       const arrayFields = Object.keys(schema.properties).filter((key) => schema.properties[key].type === 'array');
-      
+
       arrayFields.forEach((key) => {
         if (newModel[key] === undefined || newModel[key] === null) {
           newModel[key] = [];
