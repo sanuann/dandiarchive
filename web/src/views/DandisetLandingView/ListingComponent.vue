@@ -36,6 +36,7 @@ export default {
   computed: {
     renderComponent() {
       // Determines which component to render
+
       switch (this.field) {
         case 'about':
         case 'access':
@@ -49,8 +50,21 @@ export default {
         case 'keywords':
           return SimpleArray;
         default:
-          return Primitive;
+          break;
       }
+
+      switch (this.schema.type) {
+        case 'array':
+          if (this.schema.type.items && this.schema.type.items.type === 'object') {
+            return ObjectArray;
+          }
+          return SimpleArray;
+
+        default:
+          break;
+      }
+
+      return Primitive;
     },
     options() {
       // General purpose options for different components
