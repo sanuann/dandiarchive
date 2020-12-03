@@ -137,14 +137,13 @@ import Ajv from 'ajv';
 import { cloneDeep, pickBy } from 'lodash';
 
 import { girderRest } from '@/rest';
+import { isBasicType, adjustSchemaForEditor } from '@/utils/schema';
 
 import VJsf from '@koumoul/vjsf/lib/VJsf';
 import '@koumoul/vjsf/lib/deps/third-party';
 import '@koumoul/vjsf/lib/VJsf.css';
 
 const ajv = new Ajv({ allErrors: true });
-const basicTypes = ['number', 'integer', 'string', 'boolean', 'null'];
-const isBasicType = (type) => basicTypes.includes(type);
 
 export default {
   components: {
