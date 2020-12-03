@@ -2,7 +2,8 @@ import Ajv from 'ajv';
 import RefParser from '@apidevtools/json-schema-ref-parser';
 import { cloneDeep } from 'lodash';
 
-const ajv = new Ajv();
+const basicTypes = ['number', 'integer', 'string', 'boolean', 'null'];
+const isBasicType = (type) => basicTypes.includes(type);
 
 async function resolveSchemaReferences(schema) {
   // TEMPORARY: Remove known circular references
@@ -24,6 +25,7 @@ async function resolveSchemaReferences(schema) {
  * @param {Object} schema The schema at the corresponding level
  */
 function findMatchingSchema(data, schema) {
+  const ajv = new Ajv();
   const schemas = schema.anyOf || schema.oneOf;
   if (schemas) {
     return schemas.find((s) => ajv.compile(s)(data));
@@ -40,8 +42,9 @@ function findMatchingSchema(data, schema) {
  */
 function assignSubschemaToExistingData(data, schema) {
   const matchingSchema = findMatchingSchema(data, schema);
-  const { schemaKey } = matchingSchema.properties;
+  if (!matchingSchema || !data.properties) { return data; }
 
+  const { schemaKey } = matchingSchema.properties;
   if (matchingSchema && schemaKey) {
     // eslint-disable-next-line no-param-reassign
     data.properties.schemaKey = schemaKey.const;
@@ -51,29 +54,73 @@ function assignSubschemaToExistingData(data, schema) {
 }
 
 /**
+ * Injects a `schemaKey` prop into a subschema's properties.
+ * For use on schemas that may be possible chosen from a list of schemas (oneOf).
+ * @param {Object} schema - The schema to inject the schemaKey into.
+ * @param {String} ID - The string to identify this subschema with.
+ */
+function injectSchemaKey(schema, ID) {
+  return {
+    ...schema,
+    properties: {
+      ...schema.properties,
+      schemaKey: {
+        type: 'string',
+        const: ID,
+      },
+    },
+    title: ID,
+  };
+}
+
+/**
+ * Wraps a basic schema so that it may be selected from a list of schemas.
+ */
+function wrapBasicSchema(schema, parentKey = '') {
+  const titlePrefix = parentKey ? `${parentKey} ` : '';
+  const value = {
+    title: `${titlePrefix}Value`,
+    type: schema.type,
+  };
+
+  if (schema.enum) {
+    value.enum = schema.enum;
+  }
+
+  return {
+    type: 'object',
+    title: schema.title,
+    properties: {
+      ...schema.properties,
+      value,
+    },
+  };
+}
+
+/**
  * Returns an adjusted schema with fields/values that are required for the display component.
  * @param {Object} originSchema - The schema to modify
  * @param {Object} originModel - Optionally include the corresponding model, which will have
  * changes done to it in-place to match the schema
 */
-function adjustSchemaForEditor(originSchema, originModel = undefined) {
+function adjustSchemaForEditor(originSchema, originModel = {}) {
   const schema = cloneDeep(originSchema);
 
   // Recurse into each object property
   if (schema.properties) {
     Object.keys(schema.properties).forEach((key) => {
-      schema.properties[key] = adjustSchemaForEditor(schema.properties[key]);
+      schema.properties[key] = adjustSchemaForEditor(schema.properties[key], originModel[key]);
     });
   }
 
   // Recurse into each array entry
   if (schema.items) {
-    schema.items = adjustSchemaForEditor(schema.items);
+    schema.items = adjustSchemaForEditor(schema.items, originModel);
   }
 
   // Handle singular allOf
   if (schema.allOf && schema.allOf.length === 1) {
-    return adjustSchemaForEditor(schema.allOf[0]);
+    return adjustSchemaForEditor(schema.allOf[0], originModel);
   }
 
   // Change anyOf to oneOf
@@ -87,31 +134,30 @@ function adjustSchemaForEditor(originSchema, originModel = undefined) {
     // Required for editor to function properly
     schema.type = schema.type || 'object';
     schema.oneOf = schema.oneOf.map((subschema, i) => {
-      const newSubSchema = adjustSchemaForEditor(subschema);
+      // Recurse first
+      let newSubSchema = adjustSchemaForEditor(subschema, originModel);
 
       // If no title exists for the subschema, create one
       const arrayID = newSubSchema.title || `Schema ${i + 1}`;
+      newSubSchema = injectSchemaKey(newSubSchema, arrayID);
 
-      // TODO: Modify model here if supplied
+      if (isBasicType(newSubSchema.type) || newSubSchema.enum) {
+        newSubSchema = wrapBasicSchema(newSubSchema, schema.title);
+      }
 
-      return {
-        ...newSubSchema,
-        properties: {
-          ...newSubSchema.properties,
-          schemaKey: {
-            type: 'string',
-            const: arrayID,
-          },
-        },
-        title: arrayID,
-      };
+      return newSubSchema;
     });
   }
 
+  // TODO: Modify model here if supplied
+  // Among other things, needs to coerce data schema
+  // selection with assignSubschemaToExistingData
   return schema;
 }
 
 export {
+  basicTypes,
+  isBasicType,
   resolveSchemaReferences,
   findMatchingSchema,
   assignSubschemaToExistingData,
