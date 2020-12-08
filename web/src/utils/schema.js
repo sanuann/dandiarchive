@@ -2,6 +2,9 @@ import Ajv from 'ajv';
 import RefParser from '@apidevtools/json-schema-ref-parser';
 import { cloneDeep } from 'lodash';
 
+const schemaRelease = process.env.VUE_APP_DANDISET_SCHEMA_RELEASE || '1.0.0-rc1';
+const dandisetSchemaURL = `https://raw.githubusercontent.com/dandi/schema/master/releases/${schemaRelease}/dandiset.json`;
+
 const basicTypes = ['number', 'integer', 'string', 'boolean', 'null'];
 const isBasicType = (type) => basicTypes.includes(type);
 
@@ -156,6 +159,7 @@ function adjustSchemaForEditor(originSchema, originModel = {}) {
 }
 
 export {
+  dandisetSchemaURL,
   basicTypes,
   isBasicType,
   resolveSchemaReferences,
