@@ -29,6 +29,7 @@
     "vuex-router-sync": "^5.0.0"
   },
   "devDependencies": {
+    "@types/js-yaml": "^3.12.5",
     "@types/json-schema": "^7.0.6",
     "@types/lodash": "^4.14.165",
     "@typescript-eslint/eslint-plugin": "^4.9.0",
