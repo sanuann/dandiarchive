@@ -1,9 +1,8 @@
 import axios from 'axios';
-import { girderRest, publishRest, dandisetSchemaURL } from '@/rest';
-import { draftVersion } from '@/utils/constants';
+import { girderRest, publishRest } from '@/rest';
+import { draftVersion, dandisetSchemaUrl } from '@/utils/constants';
 import { dandisetHasVersion } from '@/utils/misc';
-import { resolveSchemaReferences, adjustSchemaForEditor } from '@/utils/schema';
-import toggles from '@/featureToggle';
+import { resolveSchemaReferences } from '@/utils/schema';
 
 export default {
   namespaced: true,
@@ -92,7 +91,7 @@ export default {
       state.loading = false;
     },
     async fetchDandisetSchema({ commit }) {
-      const res = await axios.get(dandisetSchemaURL);
+      const res = await axios.get(dandisetSchemaUrl);
 
       if (res.statusText !== 'OK') {
         return;

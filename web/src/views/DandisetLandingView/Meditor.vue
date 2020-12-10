@@ -150,8 +150,6 @@ import jsYaml from 'js-yaml';
 
 import { girderRest } from '@/rest';
 import { DandiModel, isJSONSchema } from '@/utils/schema/types';
-import { EditorInterface } from '@/utils/schema/conversion';
-import MetaNode from './MetaNode.vue';
 
 function renderField(fieldSchema: JSONSchema7) {
   const { properties } = fieldSchema;
