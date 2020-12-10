@@ -1,7 +1,7 @@
 import type { JSONSchema7 } from 'json-schema';
 
 import {
-  computed, ComputedRef, reactive, ref,
+  computed, reactive, ref, ComputedRef, WritableComputedRef,
 } from '@vue/composition-api';
 import { cloneDeep } from 'lodash';
 
@@ -12,6 +12,7 @@ import {
   filterModelWithSchema,
   adjustSchema,
   populateEmptyArrays,
+  writeSubModelToMaster,
 } from './utils';
 
 /**
@@ -27,12 +28,12 @@ class EditorInterface {
   modelValid: ComputedRef<boolean>;
 
   basicSchema: ComputedRef<JSONSchema7>;
-  basicModel: ComputedRef<DandiModel>;
+  basicModel: WritableComputedRef<DandiModel>;
   basicModelValid = ref(false);
 
   complexSchema: ComputedRef<JSONSchema7>;
-  complexModel: ComputedRef<DandiModel>;
-  complexModelValid = ref(false);
+  complexModel: WritableComputedRef<DandiModel>;
+  complexModelValid: ComputedRef<boolean>;
   complexModelValidation: Record<string, boolean> = {};
 
   constructor(schema: JSONSchema7, model: DandiModel) {
@@ -48,10 +49,31 @@ class EditorInterface {
     this.basicSchema = computed(() => computeBasicSchema(this.schema));
     this.complexSchema = computed(() => computeComplexSchema(this.schema));
 
-    this.basicModel = computed(() => filterModelWithSchema(this.model, this.basicSchema.value));
-    this.complexModel = computed(() => filterModelWithSchema(this.model, this.complexSchema.value));
+    // TODO: Likely need to ditch computed models,
+    // and just use functions that return the combined models.
+    this.basicModel = computed({
+      get: () => filterModelWithSchema(this.model, this.basicSchema.value),
+      set: (val) => {
+        console.log('WRITE TO BASIC MODEL');
+        writeSubModelToMaster(val, this.basicSchema.value, this.model);
+      },
+    });
+
+    // TODO: This setter isn't currently being called, because
+    // individual properties are changed, instead of the whole thing.
+    this.complexModel = computed({
+      get: () => filterModelWithSchema(this.model, this.complexSchema.value),
+      set: (val) => {
+        console.log('COMPLEX', val);
+        writeSubModelToMaster(val, this.complexSchema.value, this.model);
+      },
+    });
 
     this.modelValid = computed(() => this.basicModelValid.value && this.complexModelValid.value);
+    this.complexModelValidation = reactive({});
+    this.complexModelValid = computed(() => Object.keys(this.complexModelValidation).every(
+      (key) => !!this.complexModelValidation[key],
+    ));
   }
 
   /**

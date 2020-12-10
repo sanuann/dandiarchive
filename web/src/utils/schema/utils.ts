@@ -179,3 +179,23 @@ export function adjustSchema(schema: JSONSchema7): JSONSchema7 {
   /* eslint-enable no-param-reassign */
   return schema;
 }
+
+export function writeSubModelToMaster(
+  subModel: DandiModel, subSchema: JSONSchema7, masterModel: DandiModel,
+) {
+  /* eslint-disable no-param-reassign */
+  const propsToWrite = subSchema.properties;
+  if (propsToWrite === undefined) { return; }
+
+  Object.keys(propsToWrite).forEach((key) => {
+    masterModel[key] = subModel[key];
+  });
+
+  /* eslint-enable no-param-reassign */
+}
+
+// export function setComplexModelValue(propKey: string, value: DandiModel) {
+//   const modelVal = complexModel.value;
+//   modelVal[propKey] = value;
+//   complexModel.value = modelVal;
+// }
