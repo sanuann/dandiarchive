@@ -73,6 +73,21 @@
               </template>
               <span>Save</span>
             </v-tooltip>
+            <v-spacer />
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on }">
+                <v-btn
+                  icon
+                  v-on="on"
+                  @click="download"
+                >
+                  <v-icon>
+                    mdi-download
+                  </v-icon>
+                </v-btn>
+              </template>
+              <span>Download Metadata</span>
+            </v-tooltip>
           </v-card-actions>
         </v-card>
         <v-form>
@@ -124,111 +139,118 @@
   </v-container>
 </template>
 
-<script>
-import { mapState, mapMutations } from 'vuex';
-import VueJsonPretty from 'vue-json-pretty';
+<script lang="ts">
+import type { JSONSchema7 } from 'json-schema';
+
+import {
+  defineComponent, PropType, ref, computed, inject,
+} from '@vue/composition-api';
+
 import jsYaml from 'js-yaml';
-import Ajv from 'ajv';
 
 import { girderRest } from '@/rest';
-
+import { DandiModel, isJSONSchema } from '@/utils/schema/types';
+import { EditorInterface } from '@/utils/schema/conversion';
 import MetaNode from './MetaNode.vue';
 
-const ajv = new Ajv({ allErrors: true });
+function renderField(fieldSchema: JSONSchema7) {
+  const { properties } = fieldSchema;
 
-export default {
-  components: {
-    VueJsonPretty,
-    MetaNode,
-  },
+  if (fieldSchema.readOnly) { return false; }
+  const allSubPropsReadOnly = properties !== undefined && Object.keys(properties).every(
+    (key) => {
+      const subProp = properties[key];
+      return isJSONSchema(subProp) && subProp.readOnly;
+    },
+  );
+
+  if (allSubPropsReadOnly) { return false; }
+  return true;
+}
+
+const CommonVJSFOptions = {
+  initialValidation: 'all',
+};
+
+export default defineComponent({
+  name: 'Meditor',
+  components: { VJsf },
   props: {
     schema: {
-      type: Object,
+      type: Object as PropType<JSONSchema7>,
       required: true,
     },
     model: {
-      type: Object,
+      type: Object as PropType<DandiModel>,
       required: true,
     },
   },
-  data() {
-    return {
-      yamlOutput: true,
-      errors: [],
-      data: this.copyValue(this.model),
-      invalidPermissionSnackbar: false,
-    };
-  },
-  computed: {
-    validate() {
-      return ajv.compile(this.schema);
-    },
-    contentType() {
-      return this.yamlOutput ? 'text/yaml' : 'application/json';
-    },
-    output() {
-      return this.yamlOutput ? jsYaml.dump(this.data) : JSON.stringify(this.data, null, 2);
-    },
-    ...mapState('dandiset', {
-      id: (state) => (state.girderDandiset ? state.girderDandiset._id : null),
-    }),
-  },
-  watch: {
-    data: {
-      handler(val) {
-        this.validate(val);
-        this.errors = this.validate.errors;
-      },
-      deep: true,
-    },
-  },
-  created() {
-    this.validate(this.data);
-    this.errors = this.validate.errors;
-  },
-  methods: {
-    closeEditor() {
-      this.$emit('close');
-    },
-    async save() {
+  setup(props, ctx) {
+    // TODO: Replace once direct-vuex is added
+    const store = inject('store') as any;
+
+    const valid = ref(false);
+    const { model: modelProp, schema: schemaProp } = props;
+    const invalidPermissionSnackbar = ref(false);
+
+    const editorInterface = new EditorInterface(schemaProp, modelProp);
+    const {
+      model,
+      basicSchema,
+      basicModel,
+      basicModelValid,
+      complexSchema,
+      complexModel,
+      complexModelValid,
+      complexModelValidation,
+    } = editorInterface;
+
+    const closeEditor = () => { ctx.emit('close'); };
+
+    function sectionButtonColor(propKey: string) {
+      const sectionValid = complexModelValidation[propKey];
+      if (sectionValid !== undefined && !sectionValid) {
+        return 'error';
+      }
+
+      return undefined;
+    }
+
+    const id = computed(() => store.state.dandiset.girderDandiset?._id || null);
+    function setGirderDandiset(payload: any) {
+      // TODO: Replace once direct-vuex is added
+      store.commit('dandiset/setGirderDandiset', payload);
+    }
+
+    async function save() {
+      const dandiset = model;
+
       try {
-        const { status, data } = await girderRest.put(`folder/${this.id}/metadata`, { dandiset: this.data });
+        const { status, data } = await girderRest.put(`folder/${id}/metadata`, { dandiset });
         if (status === 200) {
-          this.setGirderDandiset(data);
-          this.closeEditor();
+          setGirderDandiset(data);
+          closeEditor();
         }
       } catch (error) {
         if (error.response.status === 403) {
-          this.invalidPermissionSnackbar = true;
+          invalidPermissionSnackbar.value = true;
         }
 
         throw error;
       }
-    },
-    publish() {
-      // Call this.save()
-      // Probably call publish endpoint on the backend
-    },
-    errorMessage(error) {
-      const path = error.dataPath.substring(1);
-      let message = `${path} ${error.message}`;
+    }
 
-      if (error.keyword === 'const') {
-        message += `: ${error.params.allowedValue}`;
-      }
+    // TODO: Add back UI to toggle YAML vs JSON
+    const yamlOutput = ref(false);
+    const contentType = computed(() => (yamlOutput.value ? 'text/yaml' : 'application/json'));
+    const output = computed(
+      () => (yamlOutput.value ? jsYaml.dump(model) : JSON.stringify(model, null, 2)),
+    );
 
-      return message;
-    },
-    copyValue(val) {
-      if (val instanceof Object && !Array.isArray(val)) {
-        return { ...val };
-      }
-      return val.valueOf();
-    },
-    download() {
-      const blob = new Blob([this.output], { type: this.contentType });
+    function download() {
+      const blob = new Blob([output.value], { type: contentType.value });
 
-      const extension = this.contentType.split('/')[1];
+      const extension = contentType.value.split('/')[1];
       const filename = `dandiset.${extension}`;
       const link = document.createElement('a');
 
@@ -236,8 +258,30 @@ export default {
       link.download = filename;
       link.click();
       URL.revokeObjectURL(link.href);
-    },
-    ...mapMutations('dandiset', ['setGirderDandiset']),
+    }
+
+    return {
+      data: model,
+      allModelsValid: valid,
+
+      basicSchema,
+      basicModel,
+      basicModelValid,
+
+      complexSchema,
+      complexModel,
+      complexModelValid,
+      complexModelValidation,
+
+      invalidPermissionSnackbar,
+      renderField,
+      closeEditor,
+      save,
+      download,
+      sectionButtonColor,
+
+      CommonVJSFOptions,
+    };
   },
-};
+});
 </script>
