@@ -198,13 +198,13 @@ export default defineComponent({
     // TODO: Replace once direct-vuex is added
     const store = inject('store') as any;
 
-    const valid = ref(false);
     const { model: modelProp, schema: schemaProp } = props;
     const invalidPermissionSnackbar = ref(false);
 
     const editorInterface = new EditorInterface(schemaProp, modelProp);
     const {
       model,
+      modelValid,
       basicSchema,
       basicModel,
       basicModelValid,
@@ -271,7 +271,7 @@ export default defineComponent({
 
     return {
       data: model,
-      allModelsValid: valid,
+      allModelsValid: modelValid,
 
       basicSchema,
       basicModel,

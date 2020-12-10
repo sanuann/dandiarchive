@@ -40,10 +40,6 @@ export const isBasicSchema = (schema: JSONSchemaUnionType): schema is BasicSchem
   && isBasicType(schema.type)
 );
 
-export const isComplexSchema = (schema: JSONSchemaUnionType):schema is ComplexSchema => (
-  !isBasicSchema(schema)
-);
-
 export const isArraySchema = (schema: JSONSchemaUnionType): schema is BasicArraySchema => (
   isJSONSchema(schema)
   && schema.items !== undefined
@@ -58,6 +54,18 @@ export const isEnum = (schema: JSONSchemaUnionType): boolean => (
   isBasicSchema(schema) && schema.enum !== undefined
 );
 
+export const isArrayEnum = (schema: JSONSchemaUnionType): boolean => (
+  isArraySchema(schema) && schema.items.enum !== undefined
+);
+
 export const isDandiModel = (given: unknown): given is DandiModel => (
   typeof given === 'object' && given !== null && !Array.isArray(given)
+);
+
+export const isBasicEditorSchema = (schema: JSONSchemaUnionType): boolean => (
+  isBasicSchema(schema) || isBasicArraySchema(schema) || isArrayEnum(schema)
+);
+
+export const isComplexEditorSchema = (schema: JSONSchemaUnionType): boolean => (
+  !isBasicEditorSchema(schema)
 );

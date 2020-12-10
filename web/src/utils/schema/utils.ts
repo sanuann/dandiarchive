@@ -1,12 +1,11 @@
 import type { JSONSchema7 } from 'json-schema';
 import { cloneDeep, pickBy } from 'lodash';
 import {
-  isBasicSchema,
-  isBasicArraySchema,
-  isComplexSchema,
   isArraySchema,
   isJSONSchema,
   isEnum,
+  isBasicEditorSchema,
+  isComplexEditorSchema,
   DandiModel,
   BasicSchema,
   BasicArraySchema,
@@ -15,7 +14,7 @@ import {
 
 export function computeBasicSchema(schema: JSONSchema7): JSONSchema7 {
   const newProperties = pickBy(schema.properties, (val): val is BasicSchema | BasicArraySchema => (
-    isBasicSchema(val) || isBasicArraySchema(val)
+    isBasicEditorSchema(val)
   ));
   const newRequired = schema.required?.filter(
     (key) => Object.keys(newProperties).includes(key),
@@ -33,7 +32,7 @@ export function computeBasicSchema(schema: JSONSchema7): JSONSchema7 {
 
 export function computeComplexSchema(schema: JSONSchema7): JSONSchema7 {
   const newProperties = pickBy(schema.properties, (val): val is ComplexSchema => (
-    isComplexSchema(val)
+    isComplexEditorSchema(val)
   ));
   const newRequired = schema.required?.filter(
     (key) => Object.keys(newProperties).includes(key),
@@ -165,7 +164,7 @@ export function adjustSchema(schema: JSONSchema7): JSONSchema7 {
       let newSubSchema = adjustSchema(subschema);
 
       // If no title exists for the subschema, create one
-      const arrayID = newSubSchema.title || `Schema ${i + 1}`;
+      const arrayID = newSubSchema.title || `Schema ${i + 1} (${newSubSchema.type})`;
       newSubSchema = injectSchemaKey(newSubSchema, arrayID);
 
       if (isEnum(newSubSchema)) {
