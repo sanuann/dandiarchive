@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+
 import Vue from 'vue';
 import VueCompositionAPI from '@vue/composition-api';
 import { sync } from 'vuex-router-sync';

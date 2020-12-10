@@ -137,7 +137,7 @@ import Ajv from 'ajv';
 import { cloneDeep, pickBy } from 'lodash';
 
 import { girderRest } from '@/rest';
-import { isBasicType, adjustSchemaForEditor } from '@/utils/schema';
+import { isBasicType } from '@/utils/schema';
 
 import VJsf from '@koumoul/vjsf/lib/VJsf';
 import '@koumoul/vjsf/lib/deps/third-party';
