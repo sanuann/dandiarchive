@@ -1,4 +1,4 @@
-import { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
+import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
 
 export type DandiModel = Record<string, unknown>
 

@@ -1,4 +1,5 @@
-import { JSONSchema7, JSONSchema7Definition } from 'json-schema';
+import type { JSONSchema7 } from 'json-schema';
+
 import {
   computed, ComputedRef, reactive, ref,
 } from '@vue/composition-api';
