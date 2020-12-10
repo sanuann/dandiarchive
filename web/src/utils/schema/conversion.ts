@@ -1,6 +1,6 @@
 import { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import {
-  computed, ComputedRef, reactive,
+  computed, ComputedRef, reactive, ref,
 } from '@vue/composition-api';
 import { pickBy, cloneDeep } from 'lodash';
 
@@ -71,6 +71,18 @@ function populateEmptyArrays(schema: JSONSchema7, model: DandiModel) {
       model[key] = [];
     }
   });
+}
+
+function filterModelWithSchema(model: DandiModel, schema: JSONSchema7): DandiModel {
+  const { properties } = schema;
+  if (!properties) { return {}; }
+
+  return Object.keys(model).filter(
+    (key) => properties[key] !== undefined,
+  ).reduce(
+    (obj, key) => ({ ...obj, [key]: cloneDeep(model[key]) }),
+    {},
+  );
 }
 
 /**
@@ -179,39 +191,48 @@ function adjustSchema(schema: JSONSchema7): JSONSchema7 {
  * operate correctly with the Meditor.
  */
 class EditorInterface {
-  sourceModel: DandiModel;
-  sourceSchema: JSONSchema7;
+  private readonly originalModel: DandiModel;
+  private readonly originalSchema: JSONSchema7;
 
-  basicModel: ComputedRef<DandiModel>;
+  schema: JSONSchema7;
+  model: DandiModel;
+  modelValid: ComputedRef<boolean>;
+
   basicSchema: ComputedRef<JSONSchema7>;
+  basicModel: ComputedRef<DandiModel>;
+  basicModelValid = ref(false);
 
-  complexModel: ComputedRef<DandiModel>;
   complexSchema: ComputedRef<JSONSchema7>;
+  complexModel: ComputedRef<DandiModel>;
+  complexModelValid = ref(false);
+  complexModelValidation: Record<string, boolean> = {};
 
   constructor(schema: JSONSchema7, model: DandiModel) {
-    this.sourceSchema = reactive(cloneDeep(schema)) as JSONSchema7;
-    this.sourceModel = reactive(cloneDeep(model));
+    this.originalSchema = schema;
+    this.originalModel = model;
+
+    this.schema = reactive(cloneDeep(schema)) as JSONSchema7;
+    this.model = reactive(cloneDeep(model));
 
     this.processInitial();
 
     // Setup split schema
-    this.basicSchema = computed(() => computeBasicSchema(this.sourceSchema));
-    this.complexSchema = computed(() => computeComplexSchema(this.sourceSchema));
+    this.basicSchema = computed(() => computeBasicSchema(this.schema));
+    this.complexSchema = computed(() => computeComplexSchema(this.schema));
 
-    // TODO: Pull out necessary items
-    this.basicModel = computed(() => this.sourceModel);
-    this.complexModel = computed(() => this.sourceModel);
+    this.basicModel = computed(() => filterModelWithSchema(this.model, this.basicSchema.value));
+    this.complexModel = computed(() => filterModelWithSchema(this.model, this.complexSchema.value));
+
+    this.modelValid = computed(() => this.basicModelValid.value && this.complexModelValid.value);
   }
 
   /**
    * Do any initial processing that may be necessary on the source model and schema.
    */
   processInitial(): void {
-    adjustSchema(this.sourceSchema);
-    populateEmptyArrays(this.sourceSchema, this.sourceModel);
+    adjustSchema(this.schema);
+    populateEmptyArrays(this.schema, this.model);
   }
-
-  // getModel() {}
 }
 
 export default EditorInterface;
