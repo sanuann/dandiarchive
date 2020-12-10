@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { girderRest, publishRest } from '@/rest';
-import { draftVersion } from '@/utils/constants';
+import { draftVersion, dandisetSchemaUrl } from '@/utils/constants';
 import { dandisetHasVersion } from '@/utils/misc';
-import { resolveSchemaReferences, adjustSchemaForEditor, dandisetSchemaURL } from '@/utils/schema';
+import { resolveSchemaReferences } from '@/utils/schema';
 
 export default {
   namespaced: true,
@@ -92,19 +92,14 @@ export default {
       state.loading = false;
     },
     async fetchDandisetSchema({ commit }) {
-      const res = await axios.get(dandisetSchemaURL);
+      const res = await axios.get(dandisetSchemaUrl);
 
       if (res.statusText !== 'OK') {
         return;
       }
 
       const schema = await resolveSchemaReferences(res.data);
-
-      // TODO: Once a proper translation layer is created,
-      // this should be movedto where it'simmediately used.
-      const adjustedSchema = adjustSchemaForEditor(schema);
-
-      commit('setDandisetSchema', adjustedSchema);
+      commit('setDandisetSchema', schema);
     },
     async fetchOwners({ state, commit }, identifier) {
       state.loading = true;

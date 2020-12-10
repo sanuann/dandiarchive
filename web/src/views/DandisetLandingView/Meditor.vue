@@ -160,7 +160,7 @@ import '@koumoul/vjsf/lib/VJsf.css';
 
 import { girderRest } from '@/rest';
 import { DandiModel, isJSONSchema } from '@/utils/schema/types';
-import { EditorInterface } from '@/utils/schema/conversion';
+import { EditorInterface } from '@/utils/schema/interface';
 
 function renderField(fieldSchema: JSONSchema7) {
   const { properties } = fieldSchema;

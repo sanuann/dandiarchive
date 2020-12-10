@@ -1,10 +1,5 @@
 import type { JSONSchema7 } from 'json-schema';
-
-import {
-  computed, ComputedRef, reactive, ref,
-} from '@vue/composition-api';
-import { pickBy, cloneDeep } from 'lodash';
-
+import { cloneDeep, pickBy } from 'lodash';
 import {
   isBasicSchema,
   isBasicArraySchema,
@@ -12,15 +7,13 @@ import {
   isArraySchema,
   isJSONSchema,
   isEnum,
-  isDandiModel,
   DandiModel,
   BasicSchema,
   BasicArraySchema,
   ComplexSchema,
-  JSONSchemaUnionType,
 } from './types';
 
-function computeBasicSchema(schema: JSONSchema7): JSONSchema7 {
+export function computeBasicSchema(schema: JSONSchema7): JSONSchema7 {
   const newProperties = pickBy(schema.properties, (val): val is BasicSchema | BasicArraySchema => (
     isBasicSchema(val) || isBasicArraySchema(val)
   ));
@@ -38,7 +31,7 @@ function computeBasicSchema(schema: JSONSchema7): JSONSchema7 {
   return newSchema;
 }
 
-function computeComplexSchema(schema: JSONSchema7): JSONSchema7 {
+export function computeComplexSchema(schema: JSONSchema7): JSONSchema7 {
   const newProperties = pickBy(schema.properties, (val): val is ComplexSchema => (
     isComplexSchema(val)
   ));
@@ -56,7 +49,7 @@ function computeComplexSchema(schema: JSONSchema7): JSONSchema7 {
   return newSchema;
 }
 
-function populateEmptyArrays(schema: JSONSchema7, model: DandiModel) {
+export function populateEmptyArrays(schema: JSONSchema7, model: DandiModel) {
   // TODO: May need to create a similar function for objects
 
   if (schema.properties === undefined) { return; }
@@ -74,7 +67,7 @@ function populateEmptyArrays(schema: JSONSchema7, model: DandiModel) {
   });
 }
 
-function filterModelWithSchema(model: DandiModel, schema: JSONSchema7): DandiModel {
+export function filterModelWithSchema(model: DandiModel, schema: JSONSchema7): DandiModel {
   const { properties } = schema;
   if (!properties) { return {}; }
 
@@ -87,12 +80,12 @@ function filterModelWithSchema(model: DandiModel, schema: JSONSchema7): DandiMod
 }
 
 /**
- * Injects a `schemaKey` prop into a subschema's properties.
- * For use on schemas that may be possible chosen from a list of schemas (oneOf).
- * @param schema - The schema to inject the schemaKey into.
- * @param ID - The string to identify this subschema with.
- */
-function injectSchemaKey(schema: JSONSchema7, ID: string): JSONSchema7 {
+   * Injects a `schemaKey` prop into a subschema's properties.
+   * For use on schemas that may be possible chosen from a list of schemas (oneOf).
+   * @param schema - The schema to inject the schemaKey into.
+   * @param ID - The string to identify this subschema with.
+   */
+export function injectSchemaKey(schema: JSONSchema7, ID: string): JSONSchema7 {
   return {
     ...schema,
     properties: {
@@ -107,9 +100,9 @@ function injectSchemaKey(schema: JSONSchema7, ID: string): JSONSchema7 {
 }
 
 /**
- * Wraps a basic schema so that it may be selected from a list of schemas.
- */
-function wrapBasicSchema(schema: JSONSchema7, parentKey = ''): JSONSchema7 {
+   * Wraps a basic schema so that it may be selected from a list of schemas.
+   */
+export function wrapBasicSchema(schema: JSONSchema7, parentKey = ''): JSONSchema7 {
   const titlePrefix = parentKey ? `${parentKey} ` : '';
   const value: JSONSchema7 = {
     title: `${titlePrefix}Value`,
@@ -130,7 +123,7 @@ function wrapBasicSchema(schema: JSONSchema7, parentKey = ''): JSONSchema7 {
   };
 }
 
-function adjustSchema(schema: JSONSchema7): JSONSchema7 {
+export function adjustSchema(schema: JSONSchema7): JSONSchema7 {
   /* eslint-disable no-param-reassign */
 
   // Recurse into each object property
@@ -186,57 +179,3 @@ function adjustSchema(schema: JSONSchema7): JSONSchema7 {
   /* eslint-enable no-param-reassign */
   return schema;
 }
-
-/**
- * Manages the interface between the source data/schema, and the changes necessary for it to
- * operate correctly with the Meditor.
- */
-class EditorInterface {
-  private readonly originalModel: DandiModel;
-  private readonly originalSchema: JSONSchema7;
-
-  schema: JSONSchema7;
-  model: DandiModel;
-  modelValid: ComputedRef<boolean>;
-
-  basicSchema: ComputedRef<JSONSchema7>;
-  basicModel: ComputedRef<DandiModel>;
-  basicModelValid = ref(false);
-
-  complexSchema: ComputedRef<JSONSchema7>;
-  complexModel: ComputedRef<DandiModel>;
-  complexModelValid = ref(false);
-  complexModelValidation: Record<string, boolean> = {};
-
-  constructor(schema: JSONSchema7, model: DandiModel) {
-    this.originalSchema = schema;
-    this.originalModel = model;
-
-    this.schema = reactive(cloneDeep(schema)) as JSONSchema7;
-    this.model = reactive(cloneDeep(model));
-
-    this.processInitial();
-
-    // Setup split schema
-    this.basicSchema = computed(() => computeBasicSchema(this.schema));
-    this.complexSchema = computed(() => computeComplexSchema(this.schema));
-
-    this.basicModel = computed(() => filterModelWithSchema(this.model, this.basicSchema.value));
-    this.complexModel = computed(() => filterModelWithSchema(this.model, this.complexSchema.value));
-
-    this.modelValid = computed(() => this.basicModelValid.value && this.complexModelValid.value);
-  }
-
-  /**
-   * Do any initial processing that may be necessary on the source model and schema.
-   */
-  processInitial(): void {
-    adjustSchema(this.schema);
-    populateEmptyArrays(this.schema, this.model);
-  }
-}
-
-export default EditorInterface;
-export {
-  EditorInterface,
-};
