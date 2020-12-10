@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 
 import Vue from 'vue';
-import VueCompositionAPI from '@vue/composition-api';
+import VueCompositionAPI, { provide } from '@vue/composition-api';
 import { sync } from 'vuex-router-sync';
 
 // @ts-ignore missing definitions
@@ -28,7 +28,9 @@ sync(store, router);
 
 girderRest.fetchUser().then(() => {
   new Vue({
-    provide: { girderRest },
+    setup() {
+      provide('store', store);
+    },
     router,
     render: (h) => h(App),
     store,
