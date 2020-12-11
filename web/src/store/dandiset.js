@@ -98,6 +98,7 @@ export default {
         return;
       }
 
+      // TODO: Move this to Editor Interface once ready
       const schema = await resolveSchemaReferences(res.data);
       commit('setDandisetSchema', schema);
     },

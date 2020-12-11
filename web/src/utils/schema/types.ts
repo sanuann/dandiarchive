@@ -1,6 +1,8 @@
 import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
+import { isRecord } from '../typing';
 
 export type DandiModel = Record<string, unknown>
+export type DandiModelUnion = DandiModel | DandiModel[];
 
 export type JSONSchemaUnionType = JSONSchema7Definition | JSONSchema7Definition[];
 export type JSONSchemaTypeNameUnion = JSONSchema7TypeName | JSONSchema7TypeName[] | undefined;
@@ -59,7 +61,15 @@ export const isArrayEnum = (schema: JSONSchemaUnionType): boolean => (
 );
 
 export const isDandiModel = (given: unknown): given is DandiModel => (
-  typeof given === 'object' && given !== null && !Array.isArray(given)
+  isRecord(given)
+);
+
+export const isDandiModelArray = (given: unknown): given is DandiModel[] => (
+  Array.isArray(given) && given.every((entry) => isDandiModel(entry))
+);
+
+export const isDandiModelUnion = (given: unknown): given is DandiModelUnion => (
+  isDandiModel(given) || isDandiModelArray(given)
 );
 
 export const isBasicEditorSchema = (schema: JSONSchemaUnionType): boolean => (

@@ -43,7 +43,7 @@
                 There are errors in the metadata for this Dandiset.
               </template>
             </v-tooltip>
-            {{ data.name }}
+            {{ basicModel.name }}
           </v-card-title>
           <v-card-actions class="pt-0">
             <v-tooltip bottom>
@@ -120,9 +120,10 @@
               v-model="complexModelValidation[propKey]"
             >
               <v-jsf
-                v-model="complexModel[propKey]"
+                :value="complexModel[propKey]"
                 :schema="complexSchema.properties[propKey]"
                 :options="CommonVJSFOptions"
+                @input="setComplexModelProp(propKey, $event)"
               />
             </v-form>
           </v-card>
@@ -203,13 +204,13 @@ export default defineComponent({
 
     const editorInterface = new EditorInterface(schemaProp, modelProp);
     const {
-      model,
       modelValid,
       basicSchema,
       basicModel,
       basicModelValid,
       complexSchema,
       complexModel,
+      setComplexModelProp,
       complexModelValid,
       complexModelValidation,
     } = editorInterface;
@@ -232,7 +233,7 @@ export default defineComponent({
     }
 
     async function save() {
-      const dandiset = model;
+      const dandiset = editorInterface.getModel();
 
       try {
         const { status, data } = await girderRest.put(`folder/${id}/metadata`, { dandiset });
@@ -252,9 +253,10 @@ export default defineComponent({
     // TODO: Add back UI to toggle YAML vs JSON
     const yamlOutput = ref(false);
     const contentType = computed(() => (yamlOutput.value ? 'text/yaml' : 'application/json'));
-    const output = computed(
-      () => (yamlOutput.value ? jsYaml.dump(model) : JSON.stringify(model, null, 2)),
-    );
+    const output = computed(() => {
+      const model = editorInterface.getModel();
+      return yamlOutput.value ? jsYaml.dump(model) : JSON.stringify(model, null, 2);
+    });
 
     function download() {
       const blob = new Blob([output.value], { type: contentType.value });
@@ -270,7 +272,6 @@ export default defineComponent({
     }
 
     return {
-      data: model,
       allModelsValid: modelValid,
 
       basicSchema,
@@ -290,6 +291,8 @@ export default defineComponent({
       sectionButtonColor,
 
       CommonVJSFOptions,
+
+      setComplexModelProp,
     };
   },
 });

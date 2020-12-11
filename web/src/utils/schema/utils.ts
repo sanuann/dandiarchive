@@ -1,4 +1,6 @@
 import type { JSONSchema7 } from 'json-schema';
+
+import Ajv from 'ajv';
 import { cloneDeep, pickBy } from 'lodash';
 import {
   isArraySchema,
@@ -6,10 +8,16 @@ import {
   isEnum,
   isBasicEditorSchema,
   isComplexEditorSchema,
+  isDandiModel,
   DandiModel,
   BasicSchema,
   BasicArraySchema,
   ComplexSchema,
+  isBasicSchema,
+  isDandiModelUnion,
+  DandiModelUnion,
+  isDandiModelArray,
+  JSONSchemaUnionType,
 } from './types';
 
 export function computeBasicSchema(schema: JSONSchema7): JSONSchema7 {
@@ -122,61 +130,142 @@ export function wrapBasicSchema(schema: JSONSchema7, parentKey = ''): JSONSchema
   };
 }
 
-export function adjustSchema(schema: JSONSchema7): JSONSchema7 {
-  /* eslint-disable no-param-reassign */
+/**
+ * This function returns a schema that matches the supplied data, taking into account anyOf/oneOf.
+ * If no schema is matched, undefined is returned.
+ */
+export function findMatchingSchema(
+  model: DandiModel, schema: JSONSchema7,
+): JSONSchema7 | undefined {
+  const ajv = new Ajv();
+  const schemas = (schema.anyOf || schema.oneOf) as JSONSchema7[];
+  if (schemas) {
+    return schemas.find((s) => ajv.compile(s)(model));
+  }
 
-  // Recurse into each object property
+  return ajv.compile(schema)(model) ? schema : undefined;
+}
+
+/**
+ * Assign a subschema (using schemaKey) to the data based on the available schemas
+ * @param model - The model that should match the schema
+ * @param schema - The schema that contains the definition of oneOf/anyOf
+ */
+export function assignSubschemaToExistingModel(model: DandiModel, schema: JSONSchema7): DandiModel {
+  const matchingSchema = findMatchingSchema(model, schema);
+  const schemaKey = matchingSchema?.properties?.schemaKey;
+
+  if (
+    !matchingSchema
+    || !schemaKey
+    || !isJSONSchema(schemaKey)
+    || matchingSchema.properties === undefined
+  ) { return model; }
+
+  return {
+    ...model,
+    schemaKey: schemaKey.const,
+  };
+}
+
+export function transformSchemaWithModel(
+  schema: JSONSchema7, model: DandiModelUnion | undefined,
+): [JSONSchema7, DandiModelUnion | undefined] {
+  let newModel: DandiModelUnion | undefined;
+  if (isDandiModelArray(model)) { newModel = []; }
+  if (isDandiModel(model)) { newModel = {}; }
+
+  const newSchema: JSONSchema7 = {
+    ...schema,
+  };
+
+  // OBJECT HANDLER
   const props = schema.properties;
   if (props) {
     Object.keys(props).forEach((key) => {
       const subschema = props[key];
+      const subModel = (model && !Array.isArray(model)) ? model[key] : undefined;
+
       if (isJSONSchema(subschema)) {
-        props[key] = adjustSchema(subschema);
+        const passModel = isDandiModelUnion(subModel) ? subModel : undefined;
+        const [propEntry, modelEntry] = transformSchemaWithModel(subschema, passModel);
+
+        newSchema.properties![key] = propEntry;
+        if (passModel && isDandiModel(newModel)) {
+          newModel[key] = modelEntry;
+        } else if (subModel !== undefined) {
+          (newModel as DandiModel)[key] = subModel;
+        }
       }
     });
   }
 
-  // Recurse into each array entry
+  // ARRAY HANDLER
   const { items } = schema;
   if (items && isJSONSchema(items)) {
-    schema.items = adjustSchema(items);
+    let newItems;
+
+    // Needs to be done in the event of no model entries
+    [newItems] = transformSchemaWithModel(items, undefined);
+
+    if (Array.isArray(model) && isDandiModelArray(newModel)) {
+      // TODO: Could be a map call
+      model.forEach((entry, i) => {
+        let newEntry;
+        [newItems, newEntry] = transformSchemaWithModel(items, entry);
+        if (newEntry !== undefined && isDandiModel(newEntry)) {
+          (newModel as DandiModel[])[i] = newEntry;
+        }
+      });
+    }
+
+    newSchema.items = newItems;
   }
 
   // Handle singular allOf
   if (schema.allOf && schema.allOf.length === 1 && isJSONSchema(schema.allOf[0])) {
-    return adjustSchema(schema.allOf[0]);
+    let newSubSchema;
+    [newSubSchema, newModel] = transformSchemaWithModel(schema.allOf[0], model);
+
+    // Replace allOf with the schema itself
+    delete newSchema.allOf;
+    Object.assign(newSchema, newSubSchema);
   }
 
   // Change anyOf to oneOf
   if (schema.anyOf) {
-    schema.oneOf = schema.anyOf;
-    delete schema.anyOf;
+    newSchema.oneOf = schema.anyOf;
+    delete newSchema.anyOf;
   }
 
   // Base Case
-  if (schema.oneOf) {
+  if (newSchema.oneOf) {
     // Required for editor to function properly
-    schema.type = schema.type || 'object';
-    schema.oneOf = schema.oneOf.map((subschema, i) => {
+    newSchema.type = schema.type || 'object';
+    newSchema.oneOf = newSchema.oneOf.map((subschema, i) => {
       if (!isJSONSchema(subschema)) { return subschema; }
 
-      // Recurse first
-      let newSubSchema = adjustSchema(subschema);
+      // Only adjust subschema
+      let [newSubSchema] = transformSchemaWithModel(subschema, undefined);
 
       // If no title exists for the subschema, create one
       const arrayID = newSubSchema.title || `Schema ${i + 1} (${newSubSchema.type})`;
       newSubSchema = injectSchemaKey(newSubSchema, arrayID);
 
-      if (isEnum(newSubSchema)) {
+      if (isEnum(newSubSchema) || isBasicSchema(newSubSchema)) {
+        // TODO: Need to add to transform table here
         newSubSchema = wrapBasicSchema(newSubSchema, schema.title);
       }
 
       return newSubSchema;
     });
+
+    if (model !== undefined && isDandiModel(model)) {
+      newModel = assignSubschemaToExistingModel(model, schema);
+    }
   }
 
-  /* eslint-enable no-param-reassign */
-  return schema;
+  return [newSchema, newModel];
 }
 
 export function writeSubModelToMaster(
@@ -192,9 +281,3 @@ export function writeSubModelToMaster(
 
   /* eslint-enable no-param-reassign */
 }
-
-// export function setComplexModelValue(propKey: string, value: DandiModel) {
-//   const modelVal = complexModel.value;
-//   modelVal[propKey] = value;
-//   complexModel.value = modelVal;
-// }

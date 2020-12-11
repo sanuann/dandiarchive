@@ -17,7 +17,7 @@
 </template>
 
 <script>
-import { findMatchingSchema } from '@/utils/schema';
+import { findMatchingSchema } from '@/utils/schema/utils';
 import ObjectComponent from './Object.vue';
 
 export default {
@@ -44,6 +44,7 @@ export default {
     };
   },
   created() {
+    // TODO: Replace with use of editorInterface
     const [resolvedData, resolvedSchemas] = this.performReplacements(this.data, this.schema.items);
 
     this.resolvedData = resolvedData;

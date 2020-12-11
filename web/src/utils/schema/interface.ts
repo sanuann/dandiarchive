@@ -1,7 +1,8 @@
 import type { JSONSchema7 } from 'json-schema';
 
+import Vue from 'vue';
 import {
-  computed, reactive, ref, ComputedRef, WritableComputedRef,
+  computed, reactive, ref, ComputedRef, WritableComputedRef, watch, watchEffect,
 } from '@vue/composition-api';
 import { cloneDeep } from 'lodash';
 
@@ -10,9 +11,10 @@ import {
   computeBasicSchema,
   computeComplexSchema,
   filterModelWithSchema,
-  adjustSchema,
+  transformSchemaWithModel,
   populateEmptyArrays,
   writeSubModelToMaster,
+  assignSubschemaToExistingModel,
 } from './utils';
 
 /**
@@ -23,16 +25,19 @@ class EditorInterface {
   private readonly originalModel: DandiModel;
   private readonly originalSchema: JSONSchema7;
 
-  schema: JSONSchema7;
-  model: DandiModel;
-  modelValid: ComputedRef<boolean>;
+  // Not guaranteed to be up to date, use getModel()
+  private model: DandiModel;
 
-  basicSchema: ComputedRef<JSONSchema7>;
-  basicModel: WritableComputedRef<DandiModel>;
+  basicModel: DandiModel;
+  complexModel: DandiModel;
+
+  schema: JSONSchema7;
+  basicSchema: JSONSchema7;
+  complexSchema: JSONSchema7;
+
+  modelValid: ComputedRef<boolean>;
   basicModelValid = ref(false);
 
-  complexSchema: ComputedRef<JSONSchema7>;
-  complexModel: WritableComputedRef<DandiModel>;
   complexModelValid: ComputedRef<boolean>;
   complexModelValidation: Record<string, boolean> = {};
 
@@ -40,37 +45,24 @@ class EditorInterface {
     this.originalSchema = schema;
     this.originalModel = model;
 
-    this.schema = reactive(cloneDeep(schema)) as JSONSchema7;
-    this.model = reactive(cloneDeep(model));
+    this.schema = cloneDeep(schema) as JSONSchema7;
+    this.model = cloneDeep(model);
 
     this.processInitial();
 
     // Setup split schema
-    this.basicSchema = computed(() => computeBasicSchema(this.schema));
-    this.complexSchema = computed(() => computeComplexSchema(this.schema));
+    this.basicSchema = computeBasicSchema(this.schema);
+    this.complexSchema = computeComplexSchema(this.schema);
 
-    // TODO: Likely need to ditch computed models,
-    // and just use functions that return the combined models.
-    this.basicModel = computed({
-      get: () => filterModelWithSchema(this.model, this.basicSchema.value),
-      set: (val) => {
-        console.log('WRITE TO BASIC MODEL');
-        writeSubModelToMaster(val, this.basicSchema.value, this.model);
-      },
-    });
-
-    // TODO: This setter isn't currently being called, because
-    // individual properties are changed, instead of the whole thing.
-    this.complexModel = computed({
-      get: () => filterModelWithSchema(this.model, this.complexSchema.value),
-      set: (val) => {
-        console.log('COMPLEX', val);
-        writeSubModelToMaster(val, this.complexSchema.value, this.model);
-      },
-    });
+    this.basicModel = reactive(filterModelWithSchema(this.model, this.basicSchema));
+    this.complexModel = reactive(filterModelWithSchema(this.model, this.complexSchema));
 
     this.modelValid = computed(() => this.basicModelValid.value && this.complexModelValid.value);
-    this.complexModelValidation = reactive({});
+    this.complexModelValidation = reactive(Object.keys(this.complexModel).reduce(
+      (obj, key) => ({ ...obj, [key]: ref(true) }), {},
+    ));
+
+    // TODO: This isn't properly reactive to changes in complexModelValidation
     this.complexModelValid = computed(() => Object.keys(this.complexModelValidation).every(
       (key) => !!this.complexModelValidation[key],
     ));
@@ -80,8 +72,27 @@ class EditorInterface {
    * Do any initial processing that may be necessary on the source model and schema.
    */
   processInitial(): void {
-    adjustSchema(this.schema);
+    // Since we're using this function at the root level, we can coerce it to DandiModel
+    [this.schema, this.model] = transformSchemaWithModel(
+      this.schema, this.model,
+    ) as [JSONSchema7, DandiModel];
     populateEmptyArrays(this.schema, this.model);
+  }
+
+  syncModel() {
+    writeSubModelToMaster(this.basicModel, this.basicSchema, this.model);
+    writeSubModelToMaster(this.complexModel, this.complexSchema, this.model);
+  }
+
+  getModel(): DandiModel {
+    this.syncModel();
+    // TODO: Use transform table to fix model differences
+
+    return this.model;
+  }
+
+  setComplexModelProp(propKey: string, value: DandiModel) {
+    Vue.set(this.complexModel, propKey, value);
   }
 }
 
