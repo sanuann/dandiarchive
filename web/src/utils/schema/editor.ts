@@ -2,7 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 
 import Vue from 'vue';
 import {
-  computed, reactive, ref, ComputedRef, WritableComputedRef, watch, watchEffect,
+  computed, reactive, ref, ComputedRef,
 } from '@vue/composition-api';
 import { cloneDeep } from 'lodash';
 
@@ -11,20 +11,16 @@ import {
   computeBasicSchema,
   computeComplexSchema,
   filterModelWithSchema,
-  transformSchemaWithModel,
-  populateEmptyArrays,
   writeSubModelToMaster,
-  assignSubschemaToExistingModel,
 } from './utils';
+
+import { SchemaHandler } from './handler';
 
 /**
  * Manages the interface between the source data/schema, and the changes necessary for it to
  * operate correctly with the Meditor.
  */
 class EditorInterface {
-  private readonly originalModel: DandiModel;
-  private readonly originalSchema: JSONSchema7;
-
   // Not guaranteed to be up to date, use getModel()
   private model: DandiModel;
 
@@ -41,14 +37,13 @@ class EditorInterface {
   complexModelValid: ComputedRef<boolean>;
   complexModelValidation: Record<string, boolean> = {};
 
-  constructor(schema: JSONSchema7, model: DandiModel) {
-    this.originalSchema = schema;
-    this.originalModel = model;
+  constructor(handler: SchemaHandler) {
+    if (handler.model === undefined) {
+      throw new Error('Cannot instantiate EditorInterface with undefined model.');
+    }
 
-    this.schema = cloneDeep(schema) as JSONSchema7;
-    this.model = cloneDeep(model);
-
-    this.processInitial();
+    this.model = cloneDeep(handler.model);
+    this.schema = cloneDeep(handler.schema);
 
     // Setup split schema
     this.basicSchema = computeBasicSchema(this.schema);
@@ -62,21 +57,9 @@ class EditorInterface {
       (obj, key) => ({ ...obj, [key]: ref(true) }), {},
     ));
 
-    // TODO: This isn't properly reactive to changes in complexModelValidation
     this.complexModelValid = computed(() => Object.keys(this.complexModelValidation).every(
       (key) => !!this.complexModelValidation[key],
     ));
-  }
-
-  /**
-   * Do any initial processing that may be necessary on the source model and schema.
-   */
-  processInitial(): void {
-    // Since we're using this function at the root level, we can coerce it to DandiModel
-    [this.schema, this.model] = transformSchemaWithModel(
-      this.schema, this.model,
-    ) as [JSONSchema7, DandiModel];
-    populateEmptyArrays(this.schema, this.model);
   }
 
   syncModel() {
@@ -86,8 +69,6 @@ class EditorInterface {
 
   getModel(): DandiModel {
     this.syncModel();
-    // TODO: Use transform table to fix model differences
-
     return this.model;
   }
 
@@ -96,7 +77,7 @@ class EditorInterface {
   }
 }
 
-export default EditorInterface;
 export {
+  // eslint-disable-next-line import/prefer-default-export
   EditorInterface,
 };

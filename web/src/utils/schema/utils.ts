@@ -1,7 +1,8 @@
+/* eslint-disable no-use-before-define */
 import type { JSONSchema7 } from 'json-schema';
 
 import Ajv from 'ajv';
-import { cloneDeep, pickBy } from 'lodash';
+import { clone, cloneDeep, pickBy } from 'lodash';
 import {
   isArraySchema,
   isJSONSchema,
@@ -17,7 +18,11 @@ import {
   isDandiModelUnion,
   DandiModelUnion,
   isDandiModelArray,
-  JSONSchemaUnionType,
+  isObjectSchema,
+  ObjectSchema,
+  ArraySchema,
+  isCombinedSchema,
+  isSingularAllOf,
 } from './types';
 
 export function computeBasicSchema(schema: JSONSchema7): JSONSchema7 {
@@ -168,62 +173,71 @@ export function assignSubschemaToExistingModel(model: DandiModel, schema: JSONSc
   };
 }
 
-export function transformSchemaWithModel(
-  schema: JSONSchema7, model: DandiModelUnion | undefined,
+function handleObject(
+  schema: ObjectSchema, model: DandiModelUnion | undefined,
 ): [JSONSchema7, DandiModelUnion | undefined] {
-  let newModel: DandiModelUnion | undefined;
-  if (isDandiModelArray(model)) { newModel = []; }
-  if (isDandiModel(model)) { newModel = {}; }
+  const newModel: DandiModelUnion | undefined = clone(model);
+  const newSchema: JSONSchema7 = clone(schema);
 
-  const newSchema: JSONSchema7 = {
-    ...schema,
-  };
-
-  // OBJECT HANDLER
   const props = schema.properties;
-  if (props) {
-    Object.keys(props).forEach((key) => {
-      const subschema = props[key];
-      const subModel = (model && !Array.isArray(model)) ? model[key] : undefined;
+  Object.keys(props).forEach((key) => {
+    const subschema = props[key];
+    const subModel = (model && !Array.isArray(model)) ? model[key] : undefined;
 
-      if (isJSONSchema(subschema)) {
-        const passModel = isDandiModelUnion(subModel) ? subModel : undefined;
-        const [propEntry, modelEntry] = transformSchemaWithModel(subschema, passModel);
+    if (isJSONSchema(subschema)) {
+      const passModel = isDandiModelUnion(subModel) ? subModel : undefined;
 
-        newSchema.properties![key] = propEntry;
-        if (passModel && isDandiModel(newModel)) {
-          newModel[key] = modelEntry;
-        } else if (subModel !== undefined) {
-          (newModel as DandiModel)[key] = subModel;
-        }
+      const [propEntry, modelEntry] = transformSchemaWithModel(subschema, passModel);
+      newSchema.properties![key] = propEntry;
+      if (passModel && isDandiModel(newModel)) {
+        newModel[key] = modelEntry;
+      } else if (subModel !== undefined) {
+        (newModel as DandiModel)[key] = subModel;
+      }
+    }
+  });
+
+  return [newSchema, newModel];
+}
+
+function handleArray(
+  schema: ArraySchema, model: DandiModelUnion | undefined,
+): [JSONSchema7, DandiModelUnion | undefined] {
+  const newModel: DandiModelUnion | undefined = clone(model);
+  const newSchema: JSONSchema7 = clone(schema);
+  const { items } = schema;
+
+  if (!isJSONSchema(items)) {
+    // Unhandled case https://json-schema.org/understanding-json-schema/reference/array.html#tuple-validation
+    return [newSchema, newModel];
+  }
+
+  // Needs to be done in the event of no model entries
+  let [newItems] = transformSchemaWithModel(items, undefined);
+
+  if (Array.isArray(model) && isDandiModelArray(model)) {
+    // TODO: Could be a map call
+    model.forEach((entry, i) => {
+      let newEntry;
+      [newItems, newEntry] = transformSchemaWithModel(items, entry);
+      if (newEntry !== undefined && isDandiModel(newEntry)) {
+        (newModel as DandiModel[])[i] = newEntry;
       }
     });
   }
 
-  // ARRAY HANDLER
-  const { items } = schema;
-  if (items && isJSONSchema(items)) {
-    let newItems;
+  newSchema.items = newItems;
+  return [newSchema, newModel];
+}
 
-    // Needs to be done in the event of no model entries
-    [newItems] = transformSchemaWithModel(items, undefined);
-
-    if (Array.isArray(model) && isDandiModelArray(newModel)) {
-      // TODO: Could be a map call
-      model.forEach((entry, i) => {
-        let newEntry;
-        [newItems, newEntry] = transformSchemaWithModel(items, entry);
-        if (newEntry !== undefined && isDandiModel(newEntry)) {
-          (newModel as DandiModel[])[i] = newEntry;
-        }
-      });
-    }
-
-    newSchema.items = newItems;
-  }
+function handleCombinedSChema(
+  schema: JSONSchema7, model: DandiModelUnion | undefined,
+): [JSONSchema7, DandiModelUnion | undefined] {
+  let newModel: DandiModelUnion | undefined = clone(model);
+  const newSchema: JSONSchema7 = clone(schema);
 
   // Handle singular allOf
-  if (schema.allOf && schema.allOf.length === 1 && isJSONSchema(schema.allOf[0])) {
+  if (isSingularAllOf(schema)) {
     let newSubSchema;
     [newSubSchema, newModel] = transformSchemaWithModel(schema.allOf[0], model);
 
@@ -263,6 +277,30 @@ export function transformSchemaWithModel(
     if (model !== undefined && isDandiModel(model)) {
       newModel = assignSubschemaToExistingModel(model, schema);
     }
+  }
+
+  return [newSchema, newModel];
+}
+
+export function transformSchemaWithModel(
+  schema: JSONSchema7, model: DandiModelUnion | undefined,
+): [JSONSchema7, DandiModelUnion | undefined] {
+  let newModel: DandiModelUnion | undefined = clone(model);
+  let newSchema: JSONSchema7 = clone(schema);
+
+  // OBJECT HANDLER
+  if (isObjectSchema(newSchema)) {
+    [newSchema, newModel] = handleObject(newSchema, newModel);
+  }
+
+  // ARRAY HANDLER
+  if (isArraySchema(newSchema)) {
+    [newSchema, newModel] = handleArray(newSchema, newModel);
+  }
+
+  // COMBINED SCHEMA HANDLER
+  if (isCombinedSchema(newSchema)) {
+    [newSchema, newModel] = handleCombinedSChema(newSchema, newModel);
   }
 
   return [newSchema, newModel];

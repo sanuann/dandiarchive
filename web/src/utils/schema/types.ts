@@ -7,7 +7,6 @@ export type DandiModelUnion = DandiModel | DandiModel[];
 export type JSONSchemaUnionType = JSONSchema7Definition | JSONSchema7Definition[];
 export type JSONSchemaTypeNameUnion = JSONSchema7TypeName | JSONSchema7TypeName[] | undefined;
 export type BasicTypeName = 'number' | 'integer' | 'string' | 'boolean' | 'null';
-export type ComplexTypeName = 'object' | 'array';
 
 export interface BasicSchema extends JSONSchema7 {
   type: BasicTypeName;
@@ -16,8 +15,20 @@ export interface BasicSchema extends JSONSchema7 {
   items: undefined;
 }
 
+export interface ObjectSchema extends JSONSchema7 {
+  type: 'object'
+  properties: {
+    [key: string]: JSONSchema7Definition;
+  };
+}
+
+export interface ArraySchema extends JSONSchema7 {
+  type: 'array'
+  items: JSONSchemaUnionType;
+}
+
 export interface ComplexSchema extends JSONSchema7 {
-  type: ComplexTypeName
+  type: 'object' | 'array'
 }
 
 export interface BasicArraySchema extends JSONSchema7 {
@@ -25,21 +36,29 @@ export interface BasicArraySchema extends JSONSchema7 {
   items: BasicSchema
 }
 
-export const basicTypes = ['number', 'integer', 'string', 'boolean', 'null'];
-export const isJSONSchema = (schema: JSONSchemaUnionType): schema is JSONSchema7 => (
-  typeof schema !== 'boolean'
-  && !Array.isArray(schema)
-);
+export interface SingularAllOfSchema extends JSONSchema7 {
+  allOf: [JSONSchema7]
+}
 
+export const basicTypes = ['number', 'integer', 'string', 'boolean', 'null'];
 export const isBasicType = (type: JSONSchemaTypeNameUnion): type is BasicTypeName => (
   type !== undefined
   && !Array.isArray(type)
   && basicTypes.includes(type)
 );
 
+export const isJSONSchema = (schema: JSONSchemaUnionType): schema is JSONSchema7 => (
+  typeof schema !== 'boolean'
+  && !Array.isArray(schema)
+);
+
 export const isBasicSchema = (schema: JSONSchemaUnionType): schema is BasicSchema => (
   isJSONSchema(schema)
   && isBasicType(schema.type)
+);
+
+export const isObjectSchema = (schema: JSONSchemaUnionType): schema is ObjectSchema => (
+  isJSONSchema(schema) && schema.properties !== undefined && schema.type === 'object'
 );
 
 export const isArraySchema = (schema: JSONSchemaUnionType): schema is BasicArraySchema => (
@@ -78,4 +97,19 @@ export const isBasicEditorSchema = (schema: JSONSchemaUnionType): boolean => (
 
 export const isComplexEditorSchema = (schema: JSONSchemaUnionType): boolean => (
   !isBasicEditorSchema(schema)
+);
+
+export const isSingularAllOf = (schema: JSONSchemaUnionType): schema is SingularAllOfSchema => (
+  isJSONSchema(schema)
+  && schema.allOf !== undefined
+  && schema.allOf.length === 1
+  && isJSONSchema(schema.allOf[0])
+);
+
+export const isCombinedSchema = (schema: JSONSchemaUnionType): boolean => (
+  isJSONSchema(schema) && (
+    isSingularAllOf(schema)
+    || schema.anyOf !== undefined
+    || schema.oneOf !== undefined
+  )
 );

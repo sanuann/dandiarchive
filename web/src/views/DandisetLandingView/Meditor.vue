@@ -161,7 +161,8 @@ import '@koumoul/vjsf/lib/VJsf.css';
 
 import { girderRest } from '@/rest';
 import { DandiModel, isJSONSchema } from '@/utils/schema/types';
-import { EditorInterface } from '@/utils/schema/interface';
+import { EditorInterface } from '@/utils/schema/editor';
+import { SchemaHandler } from '@/utils/schema/handler';
 
 function renderField(fieldSchema: JSONSchema7) {
   const { properties } = fieldSchema;
@@ -202,7 +203,8 @@ export default defineComponent({
     const { model: modelProp, schema: schemaProp } = props;
     const invalidPermissionSnackbar = ref(false);
 
-    const editorInterface = new EditorInterface(schemaProp, modelProp);
+    const schemaHandler = new SchemaHandler(schemaProp, modelProp);
+    const editorInterface = new EditorInterface(schemaHandler);
     const {
       modelValid,
       basicSchema,
