@@ -4,6 +4,9 @@ import { isRecord } from '../typing';
 export type DandiModel = Record<string, unknown>
 export type DandiModelUnion = DandiModel | DandiModel[];
 
+export type TransformFunction = (model: DandiModel) => unknown;
+export type TransformTable = Map<string, TransformFunction>;
+
 export type JSONSchemaUnionType = JSONSchema7Definition | JSONSchema7Definition[];
 export type JSONSchemaTypeNameUnion = JSONSchema7TypeName | JSONSchema7TypeName[] | undefined;
 export type BasicTypeName = 'number' | 'integer' | 'string' | 'boolean' | 'null';

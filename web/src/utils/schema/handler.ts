@@ -2,7 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 
 import { watchEffect } from '@vue/composition-api';
 import { cloneDeep } from 'lodash';
-import { DandiModel, isDandiModel } from './types';
+import { DandiModel, TransformTable } from './types';
 import {
   transformSchemaWithModel,
   populateEmptyArrays,
@@ -16,12 +16,12 @@ class SchemaHandler {
   private readonly originalModel: DandiModel | undefined;
   private readonly originalSchema: JSONSchema7;
 
-  // TODO: Add definition table, to handle circular references
-  // TODO: Add transition table to handle returning original model
-
   // Not guaranteed to be up to date, use getModel()
   model: DandiModel | undefined;
   schema: JSONSchema7;
+
+  // TODO: Add definition table, to handle circular references
+  transformTable: TransformTable = new Map();
 
   constructor(schema: JSONSchema7, model: DandiModel | undefined = undefined) {
     this.originalSchema = schema;
@@ -45,10 +45,26 @@ class SchemaHandler {
     }
   }
 
-  // Return the model after transforming it back to its original form
-  getTransformedModel(): DandiModel | undefined {
+  // Transform the model back to its original schema
+  transformModel(): DandiModel {
     // TODO: Use transform table to fix model differences
-    return this.model;
+    // 1. Remove all uses of `schemaKey`
+    // 2. Unwrap basic schemas
+
+    const newModel: DandiModel = cloneDeep(this.model) as DandiModel;
+
+    this.transformTable.forEach((transform, pathStr) => {
+      const pathArray = pathStr.split('.');
+      const lastKey = pathStr.slice(-1)[0];
+      const parent = pathArray.slice(0, -1).reduce(
+        (obj, key) => (obj[key] as DandiModel), newModel,
+      );
+
+      // Needs to be done this way to assign new value
+      parent[lastKey] = transform(parent[lastKey] as DandiModel);
+    });
+
+    return newModel;
   }
 }
 

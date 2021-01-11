@@ -198,7 +198,7 @@ export default defineComponent({
   },
   setup(props, ctx) {
     // TODO: Replace once direct-vuex is added
-    const store = inject('store') as any;
+    const store = ctx.root.$store;
 
     const { model: modelProp, schema: schemaProp } = props;
     const invalidPermissionSnackbar = ref(false);

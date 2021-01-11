@@ -4,6 +4,7 @@ import type { JSONSchema7 } from 'json-schema';
 import Ajv from 'ajv';
 import { clone, cloneDeep, pickBy } from 'lodash';
 import {
+  TransformFunction,
   isArraySchema,
   isJSONSchema,
   isEnum,
@@ -112,8 +113,9 @@ export function injectSchemaKey(schema: JSONSchema7, ID: string): JSONSchema7 {
 }
 
 /**
-   * Wraps a basic schema so that it may be selected from a list of schemas.
-   */
+  * Takes a schema of a primitive type (e.g. string), and wraps this schema
+  * with an object, so that it may be selected from a list of schemas.
+  */
 export function wrapBasicSchema(schema: JSONSchema7, parentKey = ''): JSONSchema7 {
   const titlePrefix = parentKey ? `${parentKey} ` : '';
   const value: JSONSchema7 = {
@@ -230,6 +232,14 @@ function handleArray(
   return [newSchema, newModel];
 }
 
+const unwrapBasicSchema: TransformFunction = (model) => model.value;
+const removeSchemaKey: TransformFunction = (model) => {
+  const newModel = { ...model };
+  delete newModel.schemaKey;
+
+  return newModel;
+};
+
 function handleCombinedSChema(
   schema: JSONSchema7, model: DandiModelUnion | undefined,
 ): [JSONSchema7, DandiModelUnion | undefined] {
@@ -264,6 +274,8 @@ function handleCombinedSChema(
 
       // If no title exists for the subschema, create one
       const arrayID = newSubSchema.title || `Schema ${i + 1} (${newSubSchema.type})`;
+
+      // TODO: Need to add to transform table here
       newSubSchema = injectSchemaKey(newSubSchema, arrayID);
 
       if (isEnum(newSubSchema) || isBasicSchema(newSubSchema)) {
