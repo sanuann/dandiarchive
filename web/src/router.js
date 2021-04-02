@@ -14,6 +14,7 @@ import CreateDandisetView from '@/views/CreateDandisetView/CreateDandisetView.vu
 Vue.use(Router);
 
 export default new Router({
+  mode: 'history',
   routes: [
     {
       path: '/',
